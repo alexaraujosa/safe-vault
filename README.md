@@ -1,8 +1,8 @@
 # Repositório SSI 24/25
 
-- Nº Aluno 1 - Nome Aluno 1 (a preencher)
-- Nº Aluno 2 - Nome Aluno 2 (a preencher)
-- Nº Aluno 3 - Nome Aluno 3 (a preencher)
+- a104257 - Alex Araújo de Sá
+- a104271 - Rafael Santos Fernandes
+- a95485 - Miguel Torres Carvalho
 
 ### Guiões Práticos
 
