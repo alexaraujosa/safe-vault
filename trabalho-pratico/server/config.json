@@ -1,0 +1,62 @@
+{
+    "users": {
+        "bloodygi": {
+            "created": "12/12/2025",
+            "groups": [
+                "grupo1",
+                "grupo2",
+                "grupo3"
+            ],
+            "own_groups": [
+                "grupoTop"
+            ],
+            "moderator_groups": [
+
+            ],
+            "own_files": [
+                "ficheiro1",
+                "ficheiro2",
+                "ficheiro3"
+            ],
+            "shared_files": {
+                "migueltc13": {
+                    "notes.txt": "rw",
+                    "notes2.txt": "r"
+                },
+                "darkenlm": {
+                    "notes.txt": "rw",
+                    "notes2.txt": "w"
+                }
+            }
+        }
+    },
+    "groups": {
+        "grupoTop": {
+            "owner": "bloodygi",
+            "created": "12/12/2025",
+            "moderators": [
+                "migueltc13"
+            ],
+            "users": {
+                "darkenlm": "r",
+                "migueltc13": "rw"
+            },
+            "own_files": [
+                "privado1.txt",
+                "privado2.txt"
+            ]
+        }
+    },
+    "files": {
+        "bloodygi:ficheiro1": {
+            "created": "12/12/2025",
+            "last_modified": "12/12/2025",
+            "last_accessed": "12/12/2025",
+            "owner": "bloodygi",
+            "acl": {
+                "migueltc13": "r",
+                "darkenlm": "w"
+            }
+        }
+    }
+}
