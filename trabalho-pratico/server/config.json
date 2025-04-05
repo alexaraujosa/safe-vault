@@ -4,20 +4,24 @@
             "created": "12/12/2025",
             "groups": [
                 "grupo1",
-                "grupo2",
-                "grupo3"
+                "grupo2"
             ],
             "own_groups": [
                 "grupoTop"
             ],
-            "moderator_groups": [
-
-            ],
-            "own_files": [
-                "ficheiro1",
-                "ficheiro2",
-                "ficheiro3"
-            ],
+            "moderator_groups": [],
+            "own_files": {
+                "ficheiro1": {
+                    "created": "12/12/2025",
+                    "last_modified": "12/12/2025",
+                    "last_accessed": "12/12/2025",
+                    "owner": "bloodygi",
+                    "acl": {
+                        "migueltc13": "r",
+                        "darkenlm": "w"
+                    }
+                }
+            },
             "shared_files": {
                 "migueltc13": {
                     "notes.txt": "rw",
@@ -38,42 +42,12 @@
                 "migueltc13"
             ],
             "members": {
-                "darkenlm": "r",
-                "migueltc13": "rw"
+                "darkenlm": "r"
             },
-            "files": [
-                "privado1.txt",
-                "privado2.txt"
-            ]
-        }
-    },
-    "files": {
-        "users": {
-            "bloodygi": {
-                "ficheiro1": {
-                    "created": "12/12/2025",
-                    "last_modified": "12/12/2025",
-                    "last_accessed": "12/12/2025",
-                    "owner": "bloodygi",
-                    "acl": {
-                        "migueltc13": "r",
-                        "darkenlm": "w"
-                    }
-                }
-            }
-        },
-        "groups": {
-            "grupoTop": {
-                "privado1.txt": {
-                    "created": "12/12/2025",
-                    "last_modified": "12/12/2025",
-                    "last_accessed": "12/12/2025",
-                    "owner": "bloodygi",
-                    "acl": {
-                        "migueltc13": "r",
-                        "darkenlm": "w"
-                    }
-                }
+            "files": {
+                "bloodygi": [
+                    "ficheiro1"
+                ]
             }
         }
     }
