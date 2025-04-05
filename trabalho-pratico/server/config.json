@@ -41,7 +41,7 @@
                 "darkenlm": "r",
                 "migueltc13": "rw"
             },
-            "own_files": [
+            "files": [
                 "privado1.txt",
                 "privado2.txt"
             ]
