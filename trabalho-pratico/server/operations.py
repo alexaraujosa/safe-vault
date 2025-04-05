@@ -155,25 +155,37 @@ class Operations:
 
         return groups
 
-    # TODO: add_file_to_group securely
     def add_file_to_group(self,
                           current_user_id: str,
                           group_id: str,
-                          file_id: str):
+                          file_path: str) -> str:
         # Check if the group exists
         if group_id not in self.config["groups"]:
             raise GroupNotFound(group_id)
 
         # Check if the file exists
-        if file_id not in self.config["files"]:
-            raise FileNotFound(file_id)
+        if not os.path.exists(file_path):
+            raise FileNotFound(file_path)
 
-        # TODO check if the user has permission to read the file
-        # TODO check if user has permision to add files to the group
-        # TODO remove the ownership of the file from the user and pass it to the group
+        # Check if the user can write to the group
+        # (aka the owner, moderator or a member with write permissions)
+        group = self.config["groups"][group_id]
+        if not (current_user_id == group["owner"] or
+                current_user_id in group["moderators"] or
+                (current_user_id in group["members"] and
+                 group["members"][current_user_id] == "w")):
+            raise PermissionDenied(f"User {current_user_id} does not have permission "
+                                   f"to write to group {group_id}.")
 
-        # Add the file to the group
-        self.config["groups"][group_id]["files"].append(file_id)
+        # INFO não seria mais fácil confirmar aqui se o user já tem um ficheiro com esse nome?
+        # Assim evitávamos a separação dos files por users e por groups
+
+        # TODO Check if the file is already in the group
+
+        # TODO Add file to the vault (files > groups > group_id > file_id)
+
+        # TODO Add the file to the group
+        # self.config["groups"][group_id]["files"].append(file_id)
 
         # TODO return the new file id: group_id:file_id
 
