@@ -16,6 +16,7 @@ from exceptions import (
 ###
 
 def is_valid_permission(permissions: str) -> bool:
+    "Check if the given permissions are valid, i.e., 'r', 'w', or 'rw'."
     valid_permissions = ["r", "w", "rw"]
     return permissions in valid_permissions
 
