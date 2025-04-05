@@ -14,10 +14,6 @@ class Config:
             self.save({
                 "users": {},
                 "groups": {},
-                "files": {
-                    "users": {},
-                    "groups": {},
-                }
             })
         except Exception as e:
             print(f"Error initializing config: {e}")
