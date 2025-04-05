@@ -1,5 +1,13 @@
 import os
 import datetime
+from exceptions import (
+    PermissionDenied,
+    GroupNotFound,
+    UserNotFound,
+    InvalidPermission,
+    UserNotMemberOfGroup,
+    FileNotFound
+)
 
 
 ###
@@ -51,12 +59,14 @@ class Operations:
             "own_files": []
         }
 
-    def delete_group(self, group_id: str):
+    def delete_group(self, current_user_id: str, group_id: str):
         # Check if the group exists
         if group_id not in self.config["groups"]:
-            raise ValueError(f"Group {group_id} does not exist.")
+            raise GroupNotFound(group_id)
 
-        # TODO check if the user is the owner of the group
+        # Check if the user is the owner of the group
+        if self.config["groups"][group_id]["owner"] != current_user_id:
+            raise PermissionDenied(f"User {current_user_id} is not the owner of group {group_id}.")
 
         # Delete the group
         del self.config["groups"][group_id]
@@ -65,16 +75,15 @@ class Operations:
         # Check if the permissions are valid
         permissions = permissions.lower()
         if not is_valid_permission(permissions):
-            raise ValueError(f"Invalid permissions: {permissions}.\n"
-                             "Valid permissions are: r, w, rw.")
+            raise InvalidPermission(permissions)
 
         # Check if the group exists
         if group_id not in self.config["groups"]:
-            raise ValueError(f"Group {group_id} does not exist.")
+            raise GroupNotFound(group_id)
 
         # Check if the user exists
         if user_id not in self.config["users"]:
-            raise ValueError(f"User {user_id} does not exist.")
+            raise UserNotFound(user_id)
 
         # TODO Check if user adding is the owner or moderator of the group
 
@@ -92,15 +101,15 @@ class Operations:
     def remove_user_from_group(self, group_id: str, user_id: str):
         # Check if the group exists
         if group_id not in self.config["groups"]:
-            raise ValueError(f"Group {group_id} does not exist.")
+            raise GroupNotFound(group_id)
 
         # Check if the user exists
         if user_id not in self.config["users"]:
-            raise ValueError(f"User {user_id} does not exist.")
+            raise UserNotFound(user_id)
 
         # Check if the user is not in the group
         if user_id not in self.config["groups"][group_id]["members"]:
-            raise ValueError(f"User {user_id} is not in group {group_id}.")
+            raise UserNotMemberOfGroup(user_id, group_id)
 
         # TODO Check if user removing is the owner or moderator of the group
 
@@ -113,7 +122,7 @@ class Operations:
     def list_user_groups(self, user_id: str) -> dict:
         # Check if the user exists
         if user_id not in self.config["users"]:
-            raise ValueError(f"User {user_id} does not exist.")
+            raise UserNotFound(user_id)
 
         # Get the user's groups
         user_groups = self.config["users"][user_id]["groups"]
@@ -129,11 +138,11 @@ class Operations:
     def add_file_to_group(self, group_id: str, file_id: str):
         # Check if the group exists
         if group_id not in self.config["groups"]:
-            raise ValueError(f"Group {group_id} does not exist.")
+            raise GroupNotFound(group_id)
 
         # Check if the file exists
         if file_id not in self.config["files"]:
-            raise ValueError(f"File {file_id} does not exist.")
+            raise FileNotFound(file_id)
 
         # TODO check if the user has permission to read the file
         # TODO check if user has permision to add files to the group
