@@ -46,3 +46,11 @@ class FileNotFound(Exception):
     def __init__(self, file_id: str):
         self.message = f"File {file_id} does not exist."
         super().__init__(self.message)
+
+
+class GroupAlreadyExists(Exception):
+    """Raised when a group already exists in the system."""
+
+    def __init__(self, group_id: str):
+        self.message = f"Group {group_id} already exists."
+        super().__init__(self.message)
