@@ -6,7 +6,8 @@ from exceptions import (
     UserNotFound,
     InvalidPermission,
     UserNotMemberOfGroup,
-    FileNotFound
+    FileNotFound,
+    GroupAlreadyExists
 )
 
 
@@ -45,21 +46,25 @@ class Operations:
     # Group Operations
     ###
 
-    def create_group(self, group_name: str, user_id: str):
+    def create_group(self,
+                     current_user_id: str,
+                     group_name: str):
         # Check if the group already exists
         if group_name in self.config["groups"]:
-            raise ValueError(f"Group {group_name} already exists.")
+            raise GroupAlreadyExists(group_name)
 
         # Create the group
         self.config["groups"][group_name] = {
-            "owner": user_id,
+            "owner": current_user_id,
             "created_at": get_current_timestamp(),
             "moderators": [],
             "members": {},
-            "own_files": []
+            "files": []
         }
 
-    def delete_group(self, current_user_id: str, group_id: str):
+    def delete_group(self,
+                     current_user_id: str,
+                     group_id: str) -> None:
         # Check if the group exists
         if group_id not in self.config["groups"]:
             raise GroupNotFound(group_id)
@@ -71,7 +76,13 @@ class Operations:
         # Delete the group
         del self.config["groups"][group_id]
 
-    def add_user_to_group(self, user_id: str, group_id: str, permissions: str):
+        # TODO Delete the group files?
+
+    def add_user_to_group(self,
+                          current_user_id: str,
+                          group_id: str,
+                          user_id: str,
+                          permissions: str) -> None:
         # Check if the permissions are valid
         permissions = permissions.lower()
         if not is_valid_permission(permissions):
@@ -85,7 +96,11 @@ class Operations:
         if user_id not in self.config["users"]:
             raise UserNotFound(user_id)
 
-        # TODO Check if user adding is the owner or moderator of the group
+        # Check if current user is the owner or moderator of the group
+        if not (current_user_id == self.config["groups"][group_id]["owner"] or
+                current_user_id not in self.config["groups"][group_id]["moderators"]):
+            raise PermissionDenied(f"User {current_user_id} is not the owner or "
+                                   f"moderator of group {group_id}.")
 
         # Check if the user is already in the group
         if user_id in self.config["groups"][group_id]["members"]:
@@ -98,7 +113,10 @@ class Operations:
         # Add the group to the user's groups
         self.config["users"][user_id]["groups"].append(group_id)
 
-    def remove_user_from_group(self, group_id: str, user_id: str):
+    def remove_user_from_group(self,
+                               current_user_id: str,
+                               group_id: str,
+                               user_id: str) -> None:
         # Check if the group exists
         if group_id not in self.config["groups"]:
             raise GroupNotFound(group_id)
@@ -107,11 +125,15 @@ class Operations:
         if user_id not in self.config["users"]:
             raise UserNotFound(user_id)
 
+        # Check if current user is the owner or moderator of the group
+        if not (current_user_id == self.config["groups"][group_id]["owner"] or
+                current_user_id not in self.config["groups"][group_id]["moderators"]):
+            raise PermissionDenied(f"User {current_user_id} is not the owner or "
+                                   f"moderator of group {group_id}.")
+
         # Check if the user is not in the group
         if user_id not in self.config["groups"][group_id]["members"]:
             raise UserNotMemberOfGroup(user_id, group_id)
-
-        # TODO Check if user removing is the owner or moderator of the group
 
         # Remove the user from the group
         del self.config["groups"][group_id]["members"][user_id]
@@ -119,23 +141,24 @@ class Operations:
         # Remove the group from the user's groups
         self.config["users"][user_id]["groups"].remove(group_id)
 
-    def list_user_groups(self, user_id: str) -> dict:
-        # Check if the user exists
-        if user_id not in self.config["users"]:
-            raise UserNotFound(user_id)
+        # TODO remove file permissions for the user removed?
 
+    def list_user_groups(self, current_user_id: str) -> dict:
         # Get the user's groups
-        user_groups = self.config["users"][user_id]["groups"]
+        user_groups = self.config["users"][current_user_id]["groups"]
 
         # Get the permissions for each group
-        groups_permissions = {}
+        groups = {}
         for group_id in user_groups:
-            groups_permissions[group_id] = self.config["groups"][group_id]["members"][user_id]
+            groups[group_id] = self.config["groups"][group_id]["members"][current_user_id]
 
-        return groups_permissions
+        return groups
 
     # TODO: add_file_to_group securely
-    def add_file_to_group(self, group_id: str, file_id: str):
+    def add_file_to_group(self,
+                          current_user_id: str,
+                          group_id: str,
+                          file_id: str):
         # Check if the group exists
         if group_id not in self.config["groups"]:
             raise GroupNotFound(group_id)
@@ -149,7 +172,7 @@ class Operations:
         # TODO remove the ownership of the file from the user and pass it to the group
 
         # Add the file to the group
-        self.config["groups"][group_id]["own_files"].append(file_id)
+        self.config["groups"][group_id]["files"].append(file_id)
 
         # TODO return the new file id: group_id:file_id
 
