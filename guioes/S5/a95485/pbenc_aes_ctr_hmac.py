@@ -1,6 +1,5 @@
 import os
 import sys
-import struct
 from cryptography.hazmat.primitives import hashes, hmac
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -11,6 +10,7 @@ NONCE_BYTELEN = 1
 _NONCE_LEN = NONCE_LEN.to_bytes(NONCE_BYTELEN, "little")
 HNONCE_BYTELEN = 1
 
+
 def derivate(nonce, passwd):
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
@@ -20,6 +20,7 @@ def derivate(nonce, passwd):
     )
     return kdf.derive(bytes(passwd, "ascii"))
 
+
 def enc(msgFile, passwd):
     outFile = f"{msgFile}.enc"
 
@@ -28,7 +29,7 @@ def enc(msgFile, passwd):
 
         nonce = os.urandom(NONCE_LEN)
         key = derivate(nonce, passwd)
-        
+
         cc = algorithms.AES(key)
         cce = Cipher(cc, mode=modes.CTR(nonce)).encryptor()
 
@@ -47,6 +48,7 @@ def enc(msgFile, passwd):
             of.write(len(henc).to_bytes(1, "little"))
             of.write(henc)
             of.write(enc)
+
 
 def dec(encFile, passwd):
     outFile = f"{'.'.join(encFile.split('.')[0:-1])}.dec"
@@ -73,12 +75,13 @@ def dec(encFile, passwd):
 
         with open(outFile, "wb") as of:
             of.write(dec)
-            
+
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2: exit(1)
-    op = sys.argv[1]
+    if len(sys.argv) < 2:
+        exit(1)
 
+    op = sys.argv[1]
     match op:
         case "enc":
             msgFile = sys.argv[2]

@@ -1,19 +1,24 @@
-import sys, os, base64
+import sys
+import os
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
 
-def xor(a, b): return bytes(abyte ^ bbyte for abyte, bbyte in zip(a, b))
+
+def xor(a, b):
+    return bytes(abyte ^ bbyte for abyte, bbyte in zip(a, b))
+
 
 def cbcmac_auth(m_bytes, k):
     # CBC mode requires padding
     padder = padding.PKCS7(128).padder()
     padded_m = padder.update(m_bytes) + padder.finalize()
-    iv = bytearray(16) # zero-filled IV
+    iv = bytearray(16)  # zero-filled IV
     cipher = Cipher(algorithms.AES(k), modes.CBC(iv))
     encryptor = cipher.encryptor()
     ct = encryptor.update(padded_m) + encryptor.finalize()
-    tag = ct[-16:] # last block of ciphertext
+    tag = ct[-16:]  # last block of ciphertext
     return tag
+
 
 def cbcmac_verify(tag, m_bytes, k):
     padder = padding.PKCS7(128).padder()
@@ -25,19 +30,20 @@ def cbcmac_verify(tag, m_bytes, k):
     newtag = ct[-16:]
     return tag == newtag
 
+
 def cbcmac_lengthextension_example(m1, m2):
     key = os.urandom(32)
-    tag1 = cbcmac_auth(m1,key)
-    tag2 = cbcmac_auth(m2,key)
+    tag1 = cbcmac_auth(m1, key)
+    tag2 = cbcmac_auth(m2, key)
     # print(m1, end=" ; tag : ")
     # print(base64.b64encode(tag1))
     # print(m2, end= " ; tag : ")
     # print(base64.b64encode(tag2))
     # check if tag1 verifies with m1, m2 / tag2 with m1, m2 :
-    r1 = cbcmac_verify(tag1, m1, key)
-    r2 = cbcmac_verify(tag1, m2, key)
-    r3 = cbcmac_verify(tag2, m1, key)
-    r4 = cbcmac_verify(tag2, m2, key)
+    # r1 = cbcmac_verify(tag1, m1, key)
+    # r2 = cbcmac_verify(tag1, m2, key)
+    # r3 = cbcmac_verify(tag2, m1, key)
+    # r4 = cbcmac_verify(tag2, m2, key)
     # print("tag1 + m1: " + str(r1))
     # print("tag1 + m2: " + str(r2))
     # print("tag2 + m1: " + str(r3))
@@ -50,11 +56,14 @@ def cbcmac_lengthextension_example(m1, m2):
     # print("tag2 + m3: " + str(r5))
     return r5
 
-def main(args = sys.argv):
-    if len(args) != 3: 
+
+def main(args=sys.argv):
+    if len(args) != 3:
         print("Utilização: python3 cbc-mac.py <msgs1> <msg2>")
     else:
-        print(cbcmac_lengthextension_example(args[1].encode('utf-8'), args[2].encode('utf-8')))
+        print(cbcmac_lengthextension_example(args[1].encode('utf-8'),
+                                             args[2].encode('utf-8')))
+
 
 if __name__ == '__main__':
     main()
