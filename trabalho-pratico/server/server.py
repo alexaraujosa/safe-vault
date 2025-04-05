@@ -5,7 +5,7 @@ from operations import Operations
 
 
 CONFIG_PATH = "config.json"
-VALUT_PATH = "vault"
+VAULT_PATH = "vault"
 
 
 def main():
@@ -13,7 +13,7 @@ def main():
     config = Config(CONFIG_PATH)
 
     # Initalize server operations class
-    operations = Operations(config.config, VALUT_PATH)
+    operations = Operations(config.config, VAULT_PATH)
 
 
 if __name__ == "__main__":
