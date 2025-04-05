@@ -60,7 +60,7 @@ class Operations:
             "created_at": get_current_timestamp(),
             "moderators": [],
             "members": {},
-            "files": []
+            "files": {}
         }
 
     def delete_group(self,
@@ -71,13 +71,26 @@ class Operations:
             raise GroupNotFound(group_id)
 
         # Check if the user is the owner of the group
-        if self.config["groups"][group_id]["owner"] != current_user_id:
+        group = self.config["groups"][group_id]
+        is_owner = current_user_id == group["owner"]
+        if not is_owner:
             raise PermissionDenied(f"User {current_user_id} is not the owner of group {group_id}.")
+
+        # Delete the group from the user's own groups
+        self.config["users"][current_user_id]["own_groups"].remove(group_id)
+
+        # Delete the group from other user's groups
+        for group_member in group["members"]:
+            if group_id in self.config["users"][group_member]["groups"]:
+                self.config["users"][group_member]["groups"].remove(group_id)
+
+        # Delete the group from the user's moderator groups
+        for group_moderator in group["moderators"]:
+            if group_id in self.config["users"][group_moderator]["moderator_groups"]:
+                self.config["users"][group_moderator]["moderator_groups"].remove(group_id)
 
         # Delete the group
         del self.config["groups"][group_id]
-
-        # TODO Delete the group files?
 
     def add_user_to_group(self,
                           current_user_id: str,
@@ -98,13 +111,16 @@ class Operations:
             raise UserNotFound(user_id)
 
         # Check if current user is the owner or moderator of the group
-        if not (current_user_id == self.config["groups"][group_id]["owner"] or
-                current_user_id not in self.config["groups"][group_id]["moderators"]):
+        group = self.config["groups"][group_id]
+        is_owner = current_user_id == group["owner"]
+        is_moderator = current_user_id in group["moderators"]
+
+        if not (is_owner or is_moderator):
             raise PermissionDenied(f"User {current_user_id} is not the owner or "
                                    f"moderator of group {group_id}.")
 
         # Check if the user is already in the group
-        if user_id in self.config["groups"][group_id]["members"]:
+        if user_id in group["members"]:
             print(f"User {user_id} is already in group {group_id}.\n"
                   f"Updating permissions to {permissions}.")
 
@@ -127,22 +143,40 @@ class Operations:
             raise UserNotFound(user_id)
 
         # Check if current user is the owner or moderator of the group
-        if not (current_user_id == self.config["groups"][group_id]["owner"] or
-                current_user_id not in self.config["groups"][group_id]["moderators"]):
+        group = self.config["groups"][group_id]
+        is_owner = current_user_id == group["owner"]
+        is_moderator = current_user_id in group["moderators"]
+
+        if not (is_owner or is_moderator):
             raise PermissionDenied(f"User {current_user_id} is not the owner or "
                                    f"moderator of group {group_id}.")
 
-        # Check if the user is not in the group
-        if user_id not in self.config["groups"][group_id]["members"]:
+        # Check if the user is not a member of the group
+        if user_id not in group["members"]:
             raise UserNotMemberOfGroup(user_id, group_id)
 
-        # Remove the user from the group
-        del self.config["groups"][group_id]["members"][user_id]
+        # Check if the user is not the owner of the group
+        if user_id == group["owner"]:
+            raise PermissionDenied(f"User {user_id} is the owner of group {group_id}.")
 
-        # Remove the group from the user's groups
-        self.config["users"][user_id]["groups"].remove(group_id)
+        # Only allow the owner to remove other moderators
+        if is_moderator and user_id in group["moderators"]:
+            raise PermissionDenied("Only the owner can remove moderators.")
 
-        # TODO remove file permissions for the user removed?
+        # Remove the user from the group and the group from the user,
+        # based on whether the user removed is a moderator or not
+        if user_id in group["moderators"]:
+            # Remove the user from the moderators list
+            group["moderators"].remove(user_id)
+
+            # Remove the group from the user's moderator groups
+            self.config["users"][user_id]["moderator_groups"].remove(group_id)
+        else:
+            # Remove the user from the group
+            del self.config["groups"][group_id]["members"][user_id]
+
+            # Remove the group from the user's groups
+            self.config["users"][user_id]["groups"].remove(group_id)
 
     def list_user_groups(self, current_user_id: str) -> dict:
         # Get the user's groups
@@ -152,6 +186,8 @@ class Operations:
         groups = {}
         for group_id in user_groups:
             groups[group_id] = self.config["groups"][group_id]["members"][current_user_id]
+
+        # TODO list own groups and moderator groups as well
 
         return groups
 
@@ -168,12 +204,14 @@ class Operations:
             raise FileNotFound(file_path)
 
         # Check if the user can write to the group
-        # (aka the owner, moderator or a member with write permissions)
+        # (aka the owner, a moderator or a member with write permissions)
         group = self.config["groups"][group_id]
-        if not (current_user_id == group["owner"] or
-                current_user_id in group["moderators"] or
-                (current_user_id in group["members"] and
-                 group["members"][current_user_id] == "w")):
+        is_owner = current_user_id == group["owner"]
+        is_moderator = current_user_id in group["moderators"]
+        is_member_with_write_permissions = current_user_id in group["members"] and \
+            "w" in group["members"][current_user_id]
+
+        if not (is_owner or is_moderator or is_member_with_write_permissions):
             raise PermissionDenied(f"User {current_user_id} does not have permission "
                                    f"to write to group {group_id}.")
 
