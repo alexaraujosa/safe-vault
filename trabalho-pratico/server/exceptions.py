@@ -23,12 +23,12 @@ class UserNotFound(Exception):
         super().__init__(self.message)
 
 
-class InvalidPermission(Exception):
-    """Raised when an invalid permission is provided."""
+class InvalidPermissions(Exception):
+    """Raised when invalid permissions are provided."""
 
     def __init__(self, permission: str):
         self.message = f"Invalid permission: {permission}.\n" \
-                       "Valid permissions are: r, w, rw."
+                       "Valid permissions are: 'r', 'w' and 'rw'."
         super().__init__(self.message)
 
 
@@ -40,11 +40,11 @@ class UserNotMemberOfGroup(Exception):
         super().__init__(self.message)
 
 
-class FileNotFound(Exception):
-    """Raised when a file is not found in the system."""
+class UserNotModeratorOfGroup(Exception):
+    """Raised when a user is not a moderator of a group."""
 
-    def __init__(self, file_id: str):
-        self.message = f"File {file_id} does not exist."
+    def __init__(self, user_id: str, group_id: str):
+        self.message = f"User {user_id} is not a moderator of group {group_id}."
         super().__init__(self.message)
 
 
