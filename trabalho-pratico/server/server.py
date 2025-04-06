@@ -15,6 +15,9 @@ def main():
     # Initalize server operations class
     operations = Operations(config.config, VAULT_PATH)
 
+    # Save the config file
+    config.save(config=operations.config)
+
 
 if __name__ == "__main__":
     main()
