@@ -35,4 +35,4 @@ class Config:
             self.config = json.load(f)
 
     def __str__(self):
-        return json.dumps(self.config, indent=4, ensure_ascii=False)
+        return json.dumps(self.config, ensure_ascii=False, indent=4)
