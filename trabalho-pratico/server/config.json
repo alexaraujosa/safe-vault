@@ -10,12 +10,12 @@
                 "grupoTop"
             ],
             "moderator_groups": [],
-            "own_files": {
+            "files": {
                 "ficheiro1": {
+                    "owner": "bloodygi",
                     "created": "12/12/2025",
                     "last_modified": "12/12/2025",
                     "last_accessed": "12/12/2025",
-                    "owner": "bloodygi",
                     "acl": {
                         "migueltc13": "r",
                         "darkenlm": "w"
