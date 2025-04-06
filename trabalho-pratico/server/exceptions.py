@@ -54,3 +54,11 @@ class GroupAlreadyExists(Exception):
     def __init__(self, group_id: str):
         self.message = f"Group {group_id} already exists."
         super().__init__(self.message)
+
+
+class FileNotFoundOnVault(Exception):
+    """Raised when a file is not found in a user vault."""
+
+    def __init__(self, file_id: str, user_id: str):
+        self.message = f"File {file_id} does not exists on user {user_id} vault."
+        super().__init__(self.message)
