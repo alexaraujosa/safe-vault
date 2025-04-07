@@ -260,6 +260,9 @@ class Operations:
             "files": {}
         }
 
+        # Add the group to the user's own groups
+        self.config["users"][current_user_id]["own_groups"].append(group_name)
+
         return group_name  # group_id
 
     def delete_group(self,
@@ -417,6 +420,8 @@ class Operations:
                                    f"moderator of group {group_id}.")
 
         # Check if the user is a member of the group
+        # INFO this check allows to change permissions for members only.
+        # The group owner or moderators are not allowed to have explicit permissions
         if user_id not in group["members"]:
             raise UserNotMemberOfGroup(user_id, group_id)
 
@@ -579,6 +584,20 @@ class Operations:
             # or just ignore this case by returning nothing.
             print(f"User {user_id} was already a moderator of group {group_id}.")
             return
+
+        # Check if user was previously a member of the group
+        if user_id in group["members"]:
+            print(f"User {user_id} was a member of group {group_id}.\n"
+                  "Changing user from member to moderator.")
+
+            # Remove the user from the members list
+            del self.config["groups"][group_id]["members"][user_id]
+
+            # Remove the group from the user's groups
+            self.config["users"][user_id]["groups"].remove(group_id)
+
+            # Add the group to the user's moderator groups
+            self.config["users"][user_id]["moderator_groups"].append(group_id)
 
         # Add the user to the moderators list
         self.config["groups"][group_id]["moderators"].append(user_id)
