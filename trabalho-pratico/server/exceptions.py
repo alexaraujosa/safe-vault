@@ -64,14 +64,6 @@ class FileNotFoundOnVault(Exception):
         super().__init__(self.message)
 
 
-class FileNotFoundOnSystem(Exception):
-    """Raised when a file is not found in the system."""
-
-    def __init__(self, file_path: str):
-        self.message = f"File on path {file_path} does not exists in the system."
-        super().__init__(self.message)
-
-
 class UserAlreadyExists(Exception):
     """Raised when a user already exists in the system."""
 
@@ -84,7 +76,7 @@ class SharedUserNotFound(Exception):
     """Raised when a user doesn't have the shared user entry."""
 
     def __init__(self, user_id: str, shared_user_id: str):
-        self.message = f"User {user_id} doesn't have files shared by {shared_user_id}"
+        self.message = f"User {user_id} doesn't have files shared by {shared_user_id}."
         super().__init__(self.message)
 
 
