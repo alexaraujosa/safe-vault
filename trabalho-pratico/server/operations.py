@@ -41,6 +41,7 @@ def is_file_name_valid(file_name: str) -> bool:
     "Check if the file name is a non empty string."
     return isinstance(file_name, str) and len(file_name) > 0
 
+
 ###
 # Operations Class
 ###
@@ -57,7 +58,7 @@ class Operations:
             os.mkdir(vault_path, 0o700)
 
     ###
-    # User Operations 
+    # User Operations
     ###
 
     # TODO create user method
@@ -88,10 +89,11 @@ class Operations:
         # Check if the user exists
         if current_user_id not in self.config["users"]:
             raise UserNotFound(current_user_id)
-        
+
         # Check if the file already exists on user vault
         if filename in self.config["users"][current_user_id]["files"]:
-            raise FileExistsError(f"Já existe um ficheiro com o nome '{filename}' no vault do utilizador '{current_user_id}'.")
+            raise FileExistsError(f"File '{filename}' already exists in "
+                                  f"user '{current_user_id}' vault.")
 
         # Add file to user vault
         self.config["users"][current_user_id]["files"][filename] = {
@@ -110,43 +112,42 @@ class Operations:
         except Exception as e:
             raise PermissionDenied(f"Failed to write file contents to vault: {e}")
 
-
     def list_user_personal_files(self,
-                            current_user_id: str) -> list:
+                                 current_user_id: str) -> list:
         # Check if the user exists
         if current_user_id not in self.config["users"]:
             raise UserNotFound(current_user_id)
-        
+
         return list(self.config["users"][current_user_id]["files"].keys())  # filenames
-    
+
     def list_user_shared_files(self,
-                          current_user_id: str,
-                          shared_by_user_id: str) -> list:
+                               current_user_id: str,
+                               shared_by_user_id: str) -> list:
         # Check if the user exists
         if current_user_id not in self.config["users"]:
             raise UserNotFound(current_user_id)
-        
+
         # Check if the shared user exists
         if shared_by_user_id not in self.config["users"]:
             raise UserNotFound(shared_by_user_id)
-        
+
         # Check if exists shared user entry
         if shared_by_user_id not in self.config["users"][current_user_id]["shared_files"]:
             raise SharedUserNotFound(current_user_id, shared_by_user_id)
-        
+
         return list(self.config["users"][current_user_id]["shared_files"][shared_by_user_id].items())
-    
+
     def list_user_group_files(self,
-                         current_user_id: str,
-                         group_id: str) -> list:
+                              current_user_id: str,
+                              group_id: str) -> list:
         # Check if the user exists
         if current_user_id not in self.config["users"]:
             raise UserNotFound(current_user_id)
-        
+
         # Check if the group exists
         if group_id not in self.config["groups"]:
             raise GroupNotFound(group_id)
-        
+
         files = []
         # Check if the user is the owner or moderator of the group
         if (
@@ -160,7 +161,7 @@ class Operations:
                 for filename in self.config["groups"][group_id]["files"][file_owner]:
                     files.append((filename, "rw"))
             return files
-        
+
         # Check if the user is a member of the group
         if (
             group_id in self.config["users"][current_user_id]["groups"] or
@@ -173,9 +174,9 @@ class Operations:
                 for filename in self.config["groups"][group_id]["files"][file_owner]:
                     files.append((filename, user_permissions))
             return files
-    
+
         raise UserNotMemberOfGroup(current_user_id, group_id)
-    
+
     def share_user_file(self,
                         current_user_id: str,
                         file_name: str,
@@ -184,15 +185,15 @@ class Operations:
         # Check if the user exists
         if current_user_id not in self.config["users"]:
             raise UserNotFound(current_user_id)
-        
+
         # Check if the user to share exists
         if to_share_user_id not in self.config["users"]:
             raise UserNotFound(to_share_user_id)
-        
+
         # Check if the file exists on config
         if file_name not in self.config["users"][current_user_id]["files"]:
             raise FileNotFoundOnVault(file_name, current_user_id)
-        
+
         # Check if the file exists on the system
         file_id = f"{current_user_id}:{file_name}"
         file_path = os.path.join(self.vault_path, file_id)
@@ -216,15 +217,15 @@ class Operations:
         # Check if the user exists
         if current_user_id not in self.config["users"]:
             raise UserNotFound(current_user_id)
-        
+
         # Check if the revoke user exists
         if revoke_user_id not in self.config["users"]:
             raise UserNotFound(revoke_user_id)
-        
+
         # Check if the file exists on config
         if file_name not in self.config["users"][current_user_id]["files"]:
             raise FileNotFoundOnVault(file_name, current_user_id)
-        
+
         # Revoke user access to the file
         if file_name in self.config["users"][revoke_user_id]["shared_files"][current_user_id]:
             del self.config["users"][revoke_user_id]["shared_files"][current_user_id][file_name]
@@ -232,7 +233,7 @@ class Operations:
             # Delete revoked user entry if it's empty
             if not self.config["users"][revoke_user_id]["shared_files"][current_user_id]:
                 del self.config["users"][revoke_user_id]["shared_files"][current_user_id]
-        
+
         if revoke_user_id in self.config["users"][current_user_id]["files"][file_name]["acl"]:
             del self.config["users"][current_user_id]["files"][file_name]["acl"][revoke_user_id]
 
