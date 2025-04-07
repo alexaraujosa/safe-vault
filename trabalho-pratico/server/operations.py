@@ -11,7 +11,9 @@ from exceptions import (
     FileNotFoundOnVault,
     UserAlreadyExists,
     FileNotFoundOnSystem,
-    SharedUserNotFound
+    SharedUserNotFound,
+    InvalidGroupName,
+    InvalidFileName
 )
 
 
@@ -30,9 +32,20 @@ def get_current_timestamp() -> str:
     return datetime.datetime.now().isoformat()
 
 
+def is_group_name_valid(group_name: str) -> bool:
+    "Check if the group name is a non empty string."
+    return isinstance(group_name, str) and len(group_name) > 0
+
+
+def is_file_name_valid(file_name: str) -> bool:
+    "Check if the file name is a non empty string."
+    return isinstance(file_name, str) and len(file_name) > 0
+
 ###
 # Operations Class
 ###
+
+# INFO Most operations assume that the current user exists in the metadata file
 
 class Operations:
     def __init__(self, config: dict, vault_path: str):
@@ -49,6 +62,7 @@ class Operations:
 
     # TODO create user method
     # TODO file methods on the bottom of the file. remain: delete, replace, details, read
+    # TODO input validation when adding users and files
 
     def create_user(self,
                     username) -> str:
@@ -229,6 +243,10 @@ class Operations:
     def create_group(self,
                      current_user_id: str,
                      group_name: str) -> str:
+        # Check if the group_name is valid
+        if not is_group_name_valid(group_name):
+            raise InvalidGroupName(group_name)
+
         # Check if the group already exists
         if group_name in self.config["groups"]:
             raise GroupAlreadyExists(group_name)
@@ -434,6 +452,10 @@ class Operations:
                           group_id: str,
                           file_name: str,
                           file_contents: bytes) -> str:
+        # Check if file name is valid
+        if not is_file_name_valid(file_name):
+            raise InvalidFileName(file_name)
+
         # Check if the group exists
         if group_id not in self.config["groups"]:
             raise GroupNotFound(group_id)
