@@ -83,6 +83,22 @@ class UserAlreadyExists(Exception):
 class SharedUserNotFound(Exception):
     """Raised when a user doesn't have the shared user entry."""
 
-    def __init__(self, user_id: str, shared_user_id:str):
+    def __init__(self, user_id: str, shared_user_id: str):
         self.message = f"User {user_id} doesn't have files shared by {shared_user_id}"
+        super().__init__(self.message)
+
+
+class InvalidGroupName(Exception):
+    """Raised when a group name is invalid."""
+
+    def __init__(self, group_name: str):
+        self.message = f"Group name '{group_name}' is invalid."
+        super().__init__(self.message)
+
+
+class InvalidFileName(Exception):
+    """Raised when a file name is invalid."""
+
+    def __init__(self, file_name: str):
+        self.message = f"File name '{file_name}' is invalid."
         super().__init__(self.message)
