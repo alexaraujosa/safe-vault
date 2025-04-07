@@ -62,3 +62,19 @@ class FileNotFoundOnVault(Exception):
     def __init__(self, file_id: str, user_id: str):
         self.message = f"File {file_id} does not exists on user {user_id} vault."
         super().__init__(self.message)
+
+
+class FileNotFoundOnSystem(Exception):
+    """Raised when a file is not found in the system."""
+
+    def __init__(self, file_path: str):
+        self.message = f"File on path {file_path} does not exists in the system."
+        super().__init__(self.message)
+
+
+class UserAlreadyExists(Exception):
+    """Raised when a user already exists in the system."""
+
+    def __init__(self, user_id: str):
+        self.message = f"User {user_id} already exists."
+        super().__init__(self.message)

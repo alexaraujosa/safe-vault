@@ -8,7 +8,9 @@ from exceptions import (
     UserNotMemberOfGroup,
     UserNotModeratorOfGroup,
     GroupAlreadyExists,
-    FileNotFoundOnVault
+    FileNotFoundOnVault,
+    UserAlreadyExists,
+    FileNotFoundOnSystem
 )
 
 
@@ -43,6 +45,26 @@ class Operations:
     ###
     # User Operations 
     ###
+
+    # TODO create user method
+    # TODO file methods on the bottom of the file. remain: delete, replace, details, read
+
+    def create_user(self,
+                    username) -> str:
+        # Check if the username already exists
+        if username in self.config["users"]:
+            raise UserAlreadyExists(username)
+
+        self.config["users"][username] = {
+            "created": get_current_timestamp(),
+            "groups": [],
+            "own_groups": [],
+            "moderator_groups": [],
+            "files": {},
+            "shared_files": {}
+        }
+
+        return username  # user id
 
     def add_file_to_user(self,
                          current_user_id: str,
@@ -145,7 +167,7 @@ class Operations:
             raise UserNotFound(current_user_id)
         
         # Check if the user to share exists
-        if current_user_id not in self.config["users"]:
+        if to_share_user_id not in self.config["users"]:
             raise UserNotFound(to_share_user_id)
         
         # Check if the file exists on config
@@ -155,14 +177,15 @@ class Operations:
         # Check if the file exists on the system
         file_id = f"{current_user_id}:{file_name}"
         file_path = os.path.join(self.vault_path, file_id)
-        if not os.path.exists(file_path):
-            FileNotFoundError(file_path)
+
+        if not os.path.isfile(file_path):
+            raise FileNotFoundOnSystem(file_path)
 
         # Add share user id to file acl
         self.config["users"][current_user_id]["files"][file_name]["acl"][to_share_user_id] = permissions
 
         # Add file to share user
-        if not self.config["users"][to_share_user_id]["shared_files"][current_user_id]:
+        if not self.config["users"][to_share_user_id]["shared_files"].get(current_user_id):
             self.config["users"][to_share_user_id]["shared_files"][current_user_id] = {}
 
         self.config["users"][to_share_user_id]["shared_files"][current_user_id][file_name] = permissions
@@ -184,8 +207,12 @@ class Operations:
             raise FileNotFoundOnVault(file_name, current_user_id)
         
         # Revoke user access to the file
-        if file_name in self.config["users"][revoke_user_id]["shared_files"]:
-            del self.config["users"][revoke_user_id]["shared_files"][file_name]
+        if file_name in self.config["users"][revoke_user_id]["shared_files"][current_user_id]:
+            del self.config["users"][revoke_user_id]["shared_files"][current_user_id][file_name]
+
+            # Delete revoked user entry if it's empty
+            if not self.config["users"][revoke_user_id]["shared_files"][current_user_id]:
+                del self.config["users"][revoke_user_id]["shared_files"][current_user_id]
         
         if revoke_user_id in self.config["users"][current_user_id]["files"][file_name]["acl"]:
             del self.config["users"][current_user_id]["files"][file_name]["acl"][revoke_user_id]
