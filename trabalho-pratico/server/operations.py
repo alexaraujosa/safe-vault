@@ -10,16 +10,36 @@ from exceptions import (
     GroupAlreadyExists,
     FileNotFoundOnVault,
     UserAlreadyExists,
-    FileNotFoundOnSystem,
     SharedUserNotFound,
     InvalidGroupName,
     InvalidFileName
 )
 
+# Considerations:
+# - Concurrency:
+#       If this operations are called by threads we need to add a lock to the config
+#       as well as to the file operations, such as reading, writing and deleting files.
+# - Data Corruption (TODO):
+#       If the server crashes while writing to the file, the file may be corrupted.
+#       To avoid this we can use atomic writes, which means writing to a temporary file
+#       and then renaming it to the original file name.
+# - Logging:
+#       Logging can be implemented by the caller of this operations,
+#       in order to keep this critical code clean and simple.
+
 
 ###
 # Auxiliary Functions
 ###
+
+def get_current_timestamp() -> str:
+    "Get the current timestamp in ISO 8601 format."
+    return datetime.datetime.now().isoformat()
+
+
+# TODO Use validation functions to client-side, remove them from server operations
+# TODO add is_valid_username (alfanumeric greater than 0)
+#   (if we allow special characters dont allow ':', it will break the file id extractions)
 
 def is_valid_permissions(permissions: str) -> bool:
     "Check if the given permissions are valid, i.e., 'r', 'w', or 'rw'."
@@ -27,13 +47,9 @@ def is_valid_permissions(permissions: str) -> bool:
     return permissions in valid_permissions
 
 
-def get_current_timestamp() -> str:
-    "Get the current timestamp in ISO 8601 format."
-    return datetime.datetime.now().isoformat()
-
-
 def is_group_name_valid(group_name: str) -> bool:
     "Check if the group name is a non empty string."
+    # TODO check if group name is alphanumeric
     return isinstance(group_name, str) and len(group_name) > 0
 
 
@@ -61,10 +77,6 @@ class Operations:
     # User Operations
     ###
 
-    # TODO create user method
-    # TODO file methods on the bottom of the file. remain: delete, replace, details, read
-    # TODO input validation when adding users and files
-
     def create_user(self,
                     username) -> str:
         # Check if the username already exists
@@ -84,158 +96,130 @@ class Operations:
 
     def add_file_to_user(self,
                          current_user_id: str,
-                         filename: str,
-                         content: bytes) -> None:
-        # Check if the user exists
-        if current_user_id not in self.config["users"]:
-            raise UserNotFound(current_user_id)
-
+                         file_name: str,
+                         file_contents: bytes) -> None:
         # Check if the file already exists on user vault
-        if filename in self.config["users"][current_user_id]["files"]:
-            raise FileExistsError(f"File '{filename}' already exists in "
-                                  f"user '{current_user_id}' vault.")
+        if file_name in self.config["users"][current_user_id]["files"]:
+            raise FileExistsError(f"File '{file_name}' already exists in "
+                                  f"the user '{current_user_id}' vault.")
 
-        # Add file to user vault
-        self.config["users"][current_user_id]["files"][filename] = {
-            "created": get_current_timestamp(),
-            "last_modified": get_current_timestamp(),
-            "last_accessed": get_current_timestamp(),
-            "owner": current_user_id,
-            "acl": {}
-        }
-
-        # Add content to the vault directory
-        file_path = os.path.join(self.vault_path, f"{current_user_id}:{filename}")
+        # Write file contents to the vault directory
+        file_id = f"{current_user_id}:{file_name}"
+        file_path = os.path.join(self.vault_path, file_id)
         try:
             with open(file_path, "wb") as file:
-                file.write(content)
+                file.write(file_contents)
         except Exception as e:
             raise PermissionDenied(f"Failed to write file contents to vault: {e}")
 
+        # Add file to user metadata
+        current_timestamp = get_current_timestamp()
+        self.config["users"][current_user_id]["files"][file_name] = {
+            "owner": current_user_id,
+            "created": current_timestamp,
+            "last_modified": current_timestamp,
+            "last_accessed": current_timestamp,
+            "acl": {}
+        }
+
     def list_user_personal_files(self,
                                  current_user_id: str) -> list:
-        # Check if the user exists
-        if current_user_id not in self.config["users"]:
-            raise UserNotFound(current_user_id)
-
         return list(self.config["users"][current_user_id]["files"].keys())  # filenames
 
     def list_user_shared_files(self,
                                current_user_id: str,
                                shared_by_user_id: str) -> list:
-        # Check if the user exists
-        if current_user_id not in self.config["users"]:
-            raise UserNotFound(current_user_id)
-
         # Check if the shared user exists
         if shared_by_user_id not in self.config["users"]:
             raise UserNotFound(shared_by_user_id)
 
         # Check if exists shared user entry
-        if shared_by_user_id not in self.config["users"][current_user_id]["shared_files"]:
+        shared_files = self.config["users"][current_user_id]["shared_files"]
+
+        if shared_by_user_id not in shared_files:
             raise SharedUserNotFound(current_user_id, shared_by_user_id)
 
-        return list(self.config["users"][current_user_id]["shared_files"][shared_by_user_id].items())
+        return list(shared_files[shared_by_user_id].items())
 
     def list_user_group_files(self,
                               current_user_id: str,
                               group_id: str) -> list:
-        # Check if the user exists
-        if current_user_id not in self.config["users"]:
-            raise UserNotFound(current_user_id)
-
         # Check if the group exists
         if group_id not in self.config["groups"]:
             raise GroupNotFound(group_id)
 
         files = []
-        # Check if the user is the owner or moderator of the group
-        if (
-            group_id in self.config["users"][current_user_id]["groups"] or
-            group_id in self.config["users"][current_user_id]["own_groups"]
-        ) and (
-            current_user_id == self.config["groups"][group_id]["owner"] or
-            current_user_id in self.config["groups"][group_id]["moderators"]
-        ):
-            for file_owner in self.config["groups"][group_id]["files"]:
-                for filename in self.config["groups"][group_id]["files"][file_owner]:
+
+        user = self.config["users"][current_user_id]
+        group_files = self.config["groups"][group_id]["files"]
+
+        if group_id in user["own_groups"] + user["moderator_groups"]:
+            for file_owner in group_files:
+                for filename in group_files[file_owner]:
                     files.append((filename, "rw"))
-            return files
 
-        # Check if the user is a member of the group
-        if (
-            group_id in self.config["users"][current_user_id]["groups"] or
-            group_id in self.config["users"][current_user_id]["own_groups"]
-        ) and (
-            current_user_id in self.config["groups"][group_id]["members"]
-        ):
+        elif group_id in user["groups"]:
             user_permissions = self.config["groups"][group_id]["members"][current_user_id]
-            for file_owner in self.config["groups"][group_id]["files"]:
-                for filename in self.config["groups"][group_id]["files"][file_owner]:
+            for file_owner in group_files:
+                for filename in group_files[file_owner]:
                     files.append((filename, user_permissions))
-            return files
 
-        raise UserNotMemberOfGroup(current_user_id, group_id)
+        else:
+            raise UserNotMemberOfGroup(current_user_id, group_id)
+
+        return files
 
     def share_user_file(self,
                         current_user_id: str,
-                        file_name: str,
-                        to_share_user_id: str,
+                        file_id: str,
+                        user_id_to_share: str,
                         permissions: str) -> None:
-        # Check if the user exists
-        if current_user_id not in self.config["users"]:
-            raise UserNotFound(current_user_id)
+        # Check if the user to share the file with exists
+        if user_id_to_share not in self.config["users"]:
+            raise UserNotFound(user_id_to_share)
 
-        # Check if the user to share exists
-        if to_share_user_id not in self.config["users"]:
-            raise UserNotFound(to_share_user_id)
+        # Check if the file exists on metadata file
+        # This will also check if the current user is the owner of the file
+        file_name = file_id.partition(":")[2]
 
-        # Check if the file exists on config
         if file_name not in self.config["users"][current_user_id]["files"]:
             raise FileNotFoundOnVault(file_name, current_user_id)
 
-        # Check if the file exists on the system
-        file_id = f"{current_user_id}:{file_name}"
-        file_path = os.path.join(self.vault_path, file_id)
+        # Add the respective permissions in ACL to the file being shared
+        self.config["users"][current_user_id]["files"][file_name]["acl"][user_id_to_share] = permissions
 
-        if not os.path.isfile(file_path):
-            raise FileNotFoundOnSystem(file_path)
+        # Add the shared file entry to the user who is receiving the file sharing
+        if not self.config["users"][user_id_to_share]["shared_files"].get(current_user_id):
+            self.config["users"][user_id_to_share]["shared_files"][current_user_id] = {}
 
-        # Add share user id to file acl
-        self.config["users"][current_user_id]["files"][file_name]["acl"][to_share_user_id] = permissions
-
-        # Add file to share user
-        if not self.config["users"][to_share_user_id]["shared_files"].get(current_user_id):
-            self.config["users"][to_share_user_id]["shared_files"][current_user_id] = {}
-
-        self.config["users"][to_share_user_id]["shared_files"][current_user_id][file_name] = permissions
+        self.config["users"][user_id_to_share]["shared_files"][current_user_id][file_name] = permissions
 
     def revoke_user_file_permissions(self,
                                      current_user_id: str,
-                                     file_name: str,
-                                     revoke_user_id: str) -> None:
-        # Check if the user exists
-        if current_user_id not in self.config["users"]:
-            raise UserNotFound(current_user_id)
+                                     file_id: str,
+                                     user_id_to_revoke: str) -> None:
+        # Check if the user to revoke the file permissions from exists
+        if user_id_to_revoke not in self.config["users"]:
+            raise UserNotFound(user_id_to_revoke)
 
-        # Check if the revoke user exists
-        if revoke_user_id not in self.config["users"]:
-            raise UserNotFound(revoke_user_id)
+        # Check if the file exists on metadata file
+        # This will also check if the current user is the owner of the file
+        file_name = file_id.partition(":")[2]
 
-        # Check if the file exists on config
         if file_name not in self.config["users"][current_user_id]["files"]:
             raise FileNotFoundOnVault(file_name, current_user_id)
 
+        # Revoke the file access ACL entry
+        if user_id_to_revoke in self.config["users"][current_user_id]["files"][file_name]["acl"]:
+            del self.config["users"][current_user_id]["files"][file_name]["acl"][user_id_to_revoke]
+
         # Revoke user access to the file
-        if file_name in self.config["users"][revoke_user_id]["shared_files"][current_user_id]:
-            del self.config["users"][revoke_user_id]["shared_files"][current_user_id][file_name]
+        if file_name in self.config["users"][user_id_to_revoke]["shared_files"][current_user_id]:
+            del self.config["users"][user_id_to_revoke]["shared_files"][current_user_id][file_name]
 
             # Delete revoked user entry if it's empty
-            if not self.config["users"][revoke_user_id]["shared_files"][current_user_id]:
-                del self.config["users"][revoke_user_id]["shared_files"][current_user_id]
-
-        if revoke_user_id in self.config["users"][current_user_id]["files"][file_name]["acl"]:
-            del self.config["users"][current_user_id]["files"][file_name]["acl"][revoke_user_id]
+            if not self.config["users"][user_id_to_revoke]["shared_files"][current_user_id]:
+                del self.config["users"][user_id_to_revoke]["shared_files"][current_user_id]
 
     ###
     # Group Operations
@@ -638,8 +622,10 @@ class Operations:
         self.add_user_to_group(current_user_id, group_id, user_id, permissions)
 
     ###
-    # File Operations TODO
+    # File Operations
     ###
+
+    # TODO delete, replace, details and read functions
 
     # INFO
     # When deleting files that can be in one or more groups,
