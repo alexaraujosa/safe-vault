@@ -78,3 +78,11 @@ class UserAlreadyExists(Exception):
     def __init__(self, user_id: str):
         self.message = f"User {user_id} already exists."
         super().__init__(self.message)
+
+
+class SharedUserNotFound(Exception):
+    """Raised when a user doesn't have the shared user entry."""
+
+    def __init__(self, user_id: str, shared_user_id:str):
+        self.message = f"User {user_id} doesn't have files shared by {shared_user_id}"
+        super().__init__(self.message)

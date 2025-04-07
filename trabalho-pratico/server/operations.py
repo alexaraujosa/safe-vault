@@ -10,7 +10,8 @@ from exceptions import (
     GroupAlreadyExists,
     FileNotFoundOnVault,
     UserAlreadyExists,
-    FileNotFoundOnSystem
+    FileNotFoundOnSystem,
+    SharedUserNotFound
 )
 
 
@@ -114,6 +115,10 @@ class Operations:
         # Check if the shared user exists
         if shared_by_user_id not in self.config["users"]:
             raise UserNotFound(shared_by_user_id)
+        
+        # Check if exists shared user entry
+        if shared_by_user_id not in self.config["users"][current_user_id]["shared_files"]:
+            raise SharedUserNotFound(current_user_id, shared_by_user_id)
         
         return list(self.config["users"][current_user_id]["shared_files"][shared_by_user_id].items())
     
