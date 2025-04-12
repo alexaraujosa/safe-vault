@@ -211,6 +211,11 @@ class Operations:
             permissions = permissions
         )
 
+        # Check if the given permissions are valid
+        permissions = permissions.lower()
+        if not is_valid_permissions(permissions):
+            raise InvalidPermissions(permissions)
+
         # Check if the user to share the file with exists
         if user_id_to_share not in self.config["users"]:
             raise UserNotFound(user_id_to_share)
