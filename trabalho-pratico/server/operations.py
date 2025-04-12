@@ -12,7 +12,8 @@ from exceptions import (
     UserAlreadyExists,
     SharedUserNotFound,
     InvalidGroupName,
-    InvalidFileName
+    InvalidFileName,
+    InvalidParameter
 )
 
 # Considerations:
@@ -37,7 +38,6 @@ def get_current_timestamp() -> str:
     return datetime.datetime.now().isoformat()
 
 
-# TODO Use validation functions to client-side, remove them from server operations
 # TODO add is_valid_username (alfanumeric greater than 0)
 #   (if we allow special characters dont allow ':', it will break the file id extractions)
 
@@ -57,6 +57,11 @@ def is_file_name_valid(file_name: str) -> bool:
     "Check if the file name is a non empty string."
     return isinstance(file_name, str) and len(file_name) > 0
 
+
+def validate_params(**kwargs):
+    for key, value in kwargs.items():
+        if value is None or len(value) == 0:
+            raise InvalidParameter(key, value)
 
 ###
 # Operations Class
@@ -79,6 +84,9 @@ class Operations:
 
     def create_user(self,
                     username) -> str:
+        # Validate parameters
+        validate_params(username = username)
+
         # Check if the username already exists
         if username in self.config["users"]:
             raise UserAlreadyExists(username)
@@ -98,6 +106,12 @@ class Operations:
                          current_user_id: str,
                          file_name: str,
                          file_contents: bytes) -> None:
+        # Validate parameters
+        validate_params(
+            current_user_id = current_user_id, 
+            file_name = file_name
+        )
+
         # Check if the file already exists on user vault
         if file_name in self.config["users"][current_user_id]["files"]:
             raise FileExistsError(f"File '{file_name}' already exists in "
@@ -124,11 +138,20 @@ class Operations:
 
     def list_user_personal_files(self,
                                  current_user_id: str) -> list:
+        # Validate parameters
+        validate_params(current_user_id = current_user_id)
+
         return list(self.config["users"][current_user_id]["files"].keys())  # filenames
 
     def list_user_shared_files(self,
                                current_user_id: str,
                                shared_by_user_id: str) -> list:
+        # Validate parameters
+        validate_params(
+            current_user_id = current_user_id,
+            shared_by_user_id = shared_by_user_id
+        )
+
         # Check if the shared user exists
         if shared_by_user_id not in self.config["users"]:
             raise UserNotFound(shared_by_user_id)
@@ -144,6 +167,12 @@ class Operations:
     def list_user_group_files(self,
                               current_user_id: str,
                               group_id: str) -> list:
+        # Validate parameters
+        validate_params(
+            current_user_id = current_user_id,
+            group_id = group_id
+        )
+
         # Check if the group exists
         if group_id not in self.config["groups"]:
             raise GroupNotFound(group_id)
@@ -174,6 +203,14 @@ class Operations:
                         file_id: str,
                         user_id_to_share: str,
                         permissions: str) -> None:
+        # Validate parameters
+        validate_params(
+            current_user_id = current_user_id,
+            file_id = file_id,
+            user_id_to_share = user_id_to_share,
+            permissions = permissions
+        )
+
         # Check if the user to share the file with exists
         if user_id_to_share not in self.config["users"]:
             raise UserNotFound(user_id_to_share)
@@ -198,6 +235,13 @@ class Operations:
                                      current_user_id: str,
                                      file_id: str,
                                      user_id_to_revoke: str) -> None:
+        # Validate parameters
+        validate_params(
+            current_user_id = current_user_id,
+            file_id = file_id,
+            user_id_to_revoke = user_id_to_revoke
+        )
+
         # Check if the user to revoke the file permissions from exists
         if user_id_to_revoke not in self.config["users"]:
             raise UserNotFound(user_id_to_revoke)
@@ -228,6 +272,12 @@ class Operations:
     def create_group(self,
                      current_user_id: str,
                      group_name: str) -> str:
+        # Validate parameters
+        validate_params(
+            current_user_id = current_user_id,
+            group_name = group_name
+        )
+
         # Check if the group_name is valid
         if not is_group_name_valid(group_name):
             raise InvalidGroupName(group_name)
@@ -253,6 +303,12 @@ class Operations:
     def delete_group(self,
                      current_user_id: str,
                      group_id: str) -> None:
+        # Validate parameters
+        validate_params(
+            current_user_id = current_user_id,
+            group_id = group_id
+        )
+
         # Check if the group exists
         if group_id not in self.config["groups"]:
             raise GroupNotFound(group_id)
@@ -287,6 +343,14 @@ class Operations:
                           group_id: str,
                           user_id: str,
                           permissions: str) -> None:
+        # Validate parameters
+        validate_params(
+            current_user_id = current_user_id,
+            group_id = group_id,
+            user_id = user_id,
+            permissions = permissions
+        )
+
         # Check if the given permissions are valid
         permissions = permissions.lower()
         if not is_valid_permissions(permissions):
@@ -333,6 +397,13 @@ class Operations:
                                current_user_id: str,
                                group_id: str,
                                user_id: str) -> None:
+        # Validate parameters
+        validate_params(
+            current_user_id = current_user_id,
+            group_id = group_id,
+            user_id = user_id
+        )
+
         # Check if the group exists
         if group_id not in self.config["groups"]:
             raise GroupNotFound(group_id)
@@ -382,6 +453,14 @@ class Operations:
                                       group_id: str,
                                       user_id: str,
                                       permissions: str) -> None:
+        # Validate parameters
+        validate_params(
+            current_user_id = current_user_id,
+            group_id = group_id,
+            user_id = user_id,
+            permissions = permissions
+        )
+
         # Check if the given permissions are valid
         permissions = permissions.lower()
         if not is_valid_permissions(permissions):
@@ -414,6 +493,11 @@ class Operations:
         self.config["groups"][group_id]["members"][user_id] = permissions
 
     def list_user_groups(self, current_user_id: str) -> dict:
+        # Validate parameters
+        validate_params(
+            current_user_id = current_user_id
+        )
+
         results = {
             "own_groups": [],
             "moderator_groups": [],
@@ -442,6 +526,13 @@ class Operations:
                           group_id: str,
                           file_name: str,
                           file_contents: bytes) -> str:
+        # Validate parameters
+        validate_params(
+            current_user_id = current_user_id,
+            group_id = group_id,
+            file_name = file_name
+        )
+
         # Check if file name is valid
         if not is_file_name_valid(file_name):
             raise InvalidFileName(file_name)
@@ -499,6 +590,13 @@ class Operations:
                                current_user_id: str,
                                group_id: str,
                                file_id: str) -> None:
+        # Validate parameters
+        validate_params(
+            current_user_id = current_user_id,
+            group_id = group_id,
+            file_id = file_id
+        )
+
         # Check if the group exists
         if group_id not in self.config["groups"]:
             raise GroupNotFound(group_id)
@@ -548,6 +646,13 @@ class Operations:
                                current_user_id: str,
                                group_id: str,
                                user_id: str) -> None:
+        # Validate parameters
+        validate_params(
+            current_user_id = current_user_id,
+            group_id = group_id,
+            user_id = user_id
+        )
+
         # Check if the group exists
         if group_id not in self.config["groups"]:
             raise GroupNotFound(group_id)
@@ -591,6 +696,13 @@ class Operations:
                                     current_user_id: str,
                                     group_id: str,
                                     user_id: str) -> None:
+        # Validate parameters
+        validate_params(
+            current_user_id = current_user_id,
+            group_id = group_id,
+            user_id = user_id
+        )
+
         # Check if the group exists
         if group_id not in self.config["groups"]:
             raise GroupNotFound(group_id)

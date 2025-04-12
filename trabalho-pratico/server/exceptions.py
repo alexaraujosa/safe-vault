@@ -94,3 +94,11 @@ class InvalidFileName(Exception):
     def __init__(self, file_name: str):
         self.message = f"File name '{file_name}' is invalid."
         super().__init__(self.message)
+
+
+class InvalidParameter(Exception):
+    """Raised when a parameter is passed to a function."""
+
+    def __init__(self, name: str, value):
+        self.message = f"Paramater '{name}' has an invalid value '{value}'."
+        super().__init__(self.message)
