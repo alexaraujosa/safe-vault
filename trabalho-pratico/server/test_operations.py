@@ -80,7 +80,10 @@ class TestOperations(unittest.TestCase):
             "created": self.timestamp,
             "last_modified": self.timestamp,
             "last_accessed": self.timestamp,
-            "acl": {}
+            "acl": {
+                "users": {},
+                "groups": []
+            }
         }
         filename = "file"
         content = b"1092okasnd0ij12naod"
@@ -158,10 +161,10 @@ class TestOperations(unittest.TestCase):
             self.operations.revoke_user_file_permissions(user_id, "invalid_file_id", user_id2)
 
         # Valid revoke
-        self.assertIn(user_id2, self.config["users"][user_id]["files"][filename]["acl"])
+        self.assertIn(user_id2, self.config["users"][user_id]["files"][filename]["acl"]["users"])
         self.assertIn(filename, self.config["users"][user_id2]["shared_files"][user_id])
         self.operations.revoke_user_file_permissions(user_id, file_id, user_id2)
-        self.assertNotIn(user_id2, self.config["users"][user_id]["files"][filename]["acl"])
+        self.assertNotIn(user_id2, self.config["users"][user_id]["files"][filename]["acl"]["users"])
         self.assertNotIn(user_id, self.config["users"][user_id2]["shared_files"])
 
 

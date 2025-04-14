@@ -128,7 +128,10 @@ class Operations:
             "created": current_timestamp,
             "last_modified": current_timestamp,
             "last_accessed": current_timestamp,
-            "acl": {}
+            "acl": {
+                "users": {},
+                "groups": []
+            }
         }
 
     def list_user_personal_files(self,
@@ -223,7 +226,7 @@ class Operations:
             raise FileNotFoundOnVault(file_name, current_user_id)
 
         # Add the respective permissions in ACL to the file being shared
-        self.config["users"][current_user_id]["files"][file_name]["acl"][user_id_to_share] = permissions
+        self.config["users"][current_user_id]["files"][file_name]["acl"]["users"][user_id_to_share] = permissions
 
         # Add the shared file entry to the user who is receiving the file sharing
         if not self.config["users"][user_id_to_share]["shared_files"].get(current_user_id):
@@ -254,8 +257,8 @@ class Operations:
             raise FileNotFoundOnVault(file_name, current_user_id)
 
         # Revoke the file access ACL entry
-        if user_id_to_revoke in self.config["users"][current_user_id]["files"][file_name]["acl"]:
-            del self.config["users"][current_user_id]["files"][file_name]["acl"][user_id_to_revoke]
+        if user_id_to_revoke in self.config["users"][current_user_id]["files"][file_name]["acl"]["users"]:
+            del self.config["users"][current_user_id]["files"][file_name]["acl"]["users"][user_id_to_revoke]
 
         # Revoke user access to the file
         if file_name in self.config["users"][user_id_to_revoke]["shared_files"][current_user_id]:
@@ -575,7 +578,10 @@ class Operations:
             "created": current_timestamp,
             "last_modified": current_timestamp,
             "last_accessed": current_timestamp,
-            "acl": {}
+            "acl": {
+                "users": {},
+                "groups": [group_id]
+            }
         }
 
         # Add the file to the group
