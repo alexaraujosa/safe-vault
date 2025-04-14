@@ -37,26 +37,13 @@ def get_current_timestamp() -> str:
     "Get the current timestamp in ISO 8601 format."
     return datetime.datetime.now().isoformat()
 
-
-# TODO add is_valid_username (alfanumeric greater than 0)
-#   (if we allow special characters dont allow ':', it will break the file id extractions)
+def is_valid_name(name: str) -> bool:
+    return isinstance(name, str) and len(name.strip()) > 0 and name.isalnum()
 
 def is_valid_permissions(permissions: str) -> bool:
     "Check if the given permissions are valid, i.e., 'r', 'w', or 'rw'."
     valid_permissions = ["r", "w", "rw"]
     return permissions in valid_permissions
-
-
-def is_group_name_valid(group_name: str) -> bool:
-    "Check if the group name is a non empty string."
-    # TODO check if group name is alphanumeric
-    return isinstance(group_name, str) and len(group_name) > 0
-
-
-def is_file_name_valid(file_name: str) -> bool:
-    "Check if the file name is a non empty string."
-    return isinstance(file_name, str) and len(file_name) > 0
-
 
 def validate_params(**kwargs):
     for key, value in kwargs.items():
@@ -90,6 +77,10 @@ class Operations:
         # Check if the username already exists
         if username in self.config["users"]:
             raise UserAlreadyExists(username)
+        
+        # Check valid username
+        if not is_valid_name(username):
+            raise InvalidParameter(username)
 
         self.config["users"][username] = {
             "created": get_current_timestamp(),
@@ -111,6 +102,10 @@ class Operations:
             current_user_id = current_user_id, 
             file_name = file_name
         )
+
+        # Check valid filename
+        if not is_valid_name(file_name):
+            raise InvalidFileName(file_name)
 
         # Check if the file already exists on user vault
         if file_name in self.config["users"][current_user_id]["files"]:
@@ -284,7 +279,7 @@ class Operations:
         )
 
         # Check if the group_name is valid
-        if not is_group_name_valid(group_name):
+        if not is_valid_name(group_name):
             raise InvalidGroupName(group_name)
 
         # Check if the group already exists
@@ -426,13 +421,13 @@ class Operations:
             raise PermissionDenied(f"User {current_user_id} is not the owner or "
                                    f"moderator of group {group_id}.")
 
-        # Check if the user is not a member of the group
-        if user_id not in group["members"]:
-            raise UserNotMemberOfGroup(user_id, group_id)
-
         # Check if the user is not the owner of the group
         if user_id == group["owner"]:
             raise PermissionDenied(f"User {user_id} is the owner of group {group_id}.")
+        
+        # Check if the user is not a member of the group
+        if user_id not in group["members"]:
+            raise UserNotMemberOfGroup(user_id, group_id)
 
         # Only allow the owner to remove other moderators
         if is_moderator and user_id in group["moderators"]:
@@ -539,7 +534,7 @@ class Operations:
         )
 
         # Check if file name is valid
-        if not is_file_name_valid(file_name):
+        if not is_valid_name(file_name):
             raise InvalidFileName(file_name)
 
         # Check if the group exists
@@ -620,14 +615,14 @@ class Operations:
                                    f"or the owner of group {group_id}.")
 
         # Check if the file exists in the user's files
-        user_files = self.config["users"][current_user_id]["files"]
+        user_files = self.config["users"][user_id]["files"]
         if file_name not in user_files:
             raise PermissionDenied(f"User {current_user_id} does not have a file "
                                    f"with the name {file_name}.")
 
         # Check if the file exists in the group
         group_files = self.config["groups"][group_id]["files"]
-        if current_user_id not in group_files or file_id not in group_files[current_user_id]:
+        if user_id not in group_files or file_id not in group_files[user_id]:
             raise PermissionDenied(f"File {file_id} does not exist in group {group_id}.")
 
         # Delete the file from the vault
@@ -638,10 +633,12 @@ class Operations:
             raise PermissionDenied(f"Failed to delete file from vault: {e}")
 
         # Remove the file from the user's files
-        del self.config["users"][current_user_id]["files"][file_name]
+        del self.config["users"][user_id]["files"][file_name]
 
         # Remove the file from the group's files
-        del self.config["groups"][group_id]["files"][current_user_id][file_name]
+        self.config["groups"][group_id]["files"][user_id].remove(file_id)
+        if len(self.config["groups"][group_id]["files"][user_id]) == 0:
+            del self.config["groups"][group_id]["files"][user_id]
 
     ###
     # Group Moderator Operations
