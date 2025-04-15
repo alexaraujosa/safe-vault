@@ -745,6 +745,56 @@ class Operations:
     # File Operations
     ###
 
+    def read_file(self,
+                  current_user_id: str,
+                  file_id: str) -> bytes:
+        # Validate parameters
+        validate_params(current_user_id=current_user_id,
+                        file_id=file_id)
+
+        # Extract the user and file name from the file ID
+        file_owner_id, _, file_name = file_id.partition(":")
+
+        # Check if the file exists in the user's files
+        if file_owner_id not in self.config["users"]:
+            raise UserNotFound(file_owner_id)
+
+        # Check if the file exists in the user's files
+        if file_name not in self.config["users"][file_owner_id]["files"]:
+            raise FileNotFoundOnVault(file_name, file_owner_id)
+
+        # Check if the user has permission to read the file
+        if current_user_id != file_owner_id:
+            # Check if the file owner has shared any files with the current user
+            if file_owner_id not in self.config["users"][current_user_id]["shared_files"]:
+                raise PermissionDenied(f"User {file_owner_id} has not shared "
+                                       f"any files with {current_user_id}.")
+
+            # Check if the file entry exists in the respective shared files
+            if file_name not in self.config["users"][current_user_id]["shared_files"][file_owner_id]:
+                raise PermissionDenied(f"The file {file_name} is not shared with "
+                                       f"user {current_user_id}.")
+
+            # Check if the user has read permissions
+            permissions = self.config["users"][current_user_id]["shared_files"][file_owner_id][file_name]
+            if "r" not in permissions:
+                raise PermissionDenied(f"User {current_user_id} does not have "
+                                       "permission to read the file.")
+
+        # Update the last accessed timestamp
+        current_timestamp = get_current_timestamp()
+        self.config["users"][file_owner_id]["files"][file_name]["last_accessed"] = current_timestamp
+
+        # Read the file contents from the vault
+        file_path = os.path.join(self.vault_path, file_id)
+        try:
+            with open(file_path, "rb") as file:
+                file_contents = file.read()
+        except Exception as e:
+            raise PermissionDenied(f"Failed to read file contents from vault: {e}")
+
+        return file_contents
+
     def delete_file(self,
                     current_user_id: str,
                     file_id: str) -> None:
