@@ -14,16 +14,16 @@ from exceptions import (
 )
 
 # Considerations:
-# - Concurrency:
-#       If this operations are called by threads we need to add a lock to the config
-#       as well as to the file operations, such as reading, writing and deleting files.
-# - Data Corruption (TODO):
+# - Data Corruption
 #       If the server crashes while writing to the file, the file may be corrupted.
 #       To avoid this we can use atomic writes, which means writing to a temporary file
 #       and then renaming it to the original file name.
 # - Logging:
 #       Logging can be implemented by the caller of this operations,
 #       in order to keep this critical code clean and simple.
+# - Concurrency:
+#       If this operations are called by threads we need to add a lock to the config
+#       as well as to the file operations, such as reading, writing and deleting files.
 
 
 ###
@@ -624,11 +624,7 @@ class Operations:
         # Write the file contents to the vault
         file_id = f"{current_user_id}:{file_name}"
         file_path = os.path.join(self.vault_path, file_id)
-        try:
-            with open(file_path, "wb") as file:
-                file.write(file_contents)
-        except Exception as e:
-            raise PermissionDenied(f"Failed to write file contents to vault: {e}")
+        write_file(file_path, file_contents)
 
         # Add file to the vault metadata
         current_timestamp = get_current_timestamp()
