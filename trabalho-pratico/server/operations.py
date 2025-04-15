@@ -745,7 +745,58 @@ class Operations:
     # File Operations
     ###
 
-    # TODO delete, replace, details and read functions
+    def delete_file(self,
+                    current_user_id: str,
+                    file_id: str) -> None:
+        validate_params(
+            current_user_id = current_user_id,
+            file_id = file_id
+        )
+
+        file_owner_id, _, file_name = file_id.partition(":")
+
+        # Check owner existance
+        if file_owner_id not in self.config["users"]:
+            raise InvalidFileName(file_id)
+        
+        # Validate file existance
+        if file_name not in self.config["users"][file_owner_id]["files"]:
+            raise FileNotFoundOnVault(file_id, file_owner_id)
+        
+        # Current user is the owner
+        if current_user_id == file_owner_id:
+
+            # Remove users entries
+            for user_id in self.config["users"][current_user_id]["files"][file_name]["acl"]["users"]:
+                del self.config["users"][user_id]["shared_files"][current_user_id][file_name]
+                if len(self.config["users"][user_id]["shared_files"][current_user_id]) == 0:
+                    del self.config["users"][user_id]["shared_files"][current_user_id]
+                del self.config["users"][current_user_id]["files"][file_name]["acl"][user_id]
+            # Remove groups entries
+            for group_id in self.config["users"][current_user_id]["files"][file_name]["acl"]["groups"]:
+                del self.config["groups"][group_id]["files"][current_user_id][file_id]
+                if len(self.config["groups"][group_id]["files"][current_user_id]) == 0:
+                    del self.config["groups"][group_id]["files"][current_user_id]
+                self.config["users"][current_user_id]["files"][file_name]["acl"]["groups"][group_id]
+            # Remove owner entry
+            del self.config["users"][current_user_id]["files"][file_name]
+            # Remove file from vault
+            os.remove(os.path.join(self.vault_path, file_id))
+        else:
+            if file_owner_id in self.config["users"][current_user_id]["shared_files"]:
+                del self.config["users"][current_user_id]["shared_files"][file_owner_id][file_name]
+                if len(self.config["users"][current_user_id]["shared_files"][file_owner_id]) == 0:
+                    del self.config["users"][current_user_id]["shared_files"][file_owner_id]
+
+            # Current user is a group owner
+            for group_id in self.config["users"][file_owner_id]["files"][file_name]["acl"]["groups"]:
+                if current_user_id == self.config["groups"][group_id]["owner"]:
+                    del self.config["groups"][group_id]["files"][file_owner_id][file_id]
+                    if len(self.config["groups"][group_id]["files"][file_owner_id]) == 0:
+                        del self.config["groups"][group_id]["files"][file_owner_id]
+                    del self.config["users"][file_owner_id]["files"][file_name]["acl"]["groups"][group_id]
+
+    # TODO replace, details and read functions
 
     # INFO
     # When deleting files that can be in one or more groups,
