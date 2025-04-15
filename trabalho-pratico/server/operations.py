@@ -366,7 +366,6 @@ class Operations:
         # 1. Server sends the following to the client:
         #   - Request to reencrypt file
         #   - File contents
-        #   - File metadata (to store the symmetric key with the name of the file_id) [Alternatively: just the file_id]
         #   - Encrypted symmetric key
         #   - Dictionary of public keys of the users that have access to the file
         # 2. Client decrypts symmetric key and file contents
