@@ -13,23 +13,34 @@
             "files": {
                 "ficheiro1": {
                     "owner": "bloodygi",
+                    "size": "1024",
                     "created": "12/12/2025",
                     "last_modified": "12/12/2025",
                     "last_accessed": "12/12/2025",
+                    "key": "1111",
                     "acl": {
-                        "migueltc13": "r",
-                        "darkenlm": "w"
+                        "users": {
+                            "migueltc13": "r",
+                            "darkenlm": "w"
+                        },
+                        "groups": [
+                            "grupoTop"
+                        ]
                     }
                 }
             },
             "shared_files": {
                 "migueltc13": {
-                    "notes.txt": "rw",
-                    "notes2.txt": "r"
+                    "notes.txt": {
+                        "permissions": "w",
+                        "key": "2222"
+                    }
                 },
                 "darkenlm": {
-                    "notes.txt": "rw",
-                    "notes2.txt": "w"
+                    "notes.txt": {
+                        "permissions": "r",
+                        "key": "3333"
+                    }
                 }
             }
         }
