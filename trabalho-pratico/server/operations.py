@@ -149,7 +149,6 @@ def validate_params(**kwargs) -> None:
 ###
 
 # TODO Update Group, Moderator and File operations methods
-# TODO Don't assume that the current user exists in the metadata file
 # TODO Don't assume owners or moderators have omitted permissions
 
 class Operations:
