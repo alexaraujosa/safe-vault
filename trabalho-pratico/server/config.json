@@ -13,6 +13,7 @@
             "files": {
                 "ficheiro1": {
                     "owner": "bloodygi",
+                    "_comment": "Owner of the file is not being used so it should be removed",
                     "size": "1024",
                     "created": "12/12/2025",
                     "last_modified": "12/12/2025",
