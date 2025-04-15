@@ -781,6 +781,8 @@ class Operations:
                 raise PermissionDenied(f"User {current_user_id} does not have "
                                        "permission to read the file.")
 
+        # TODO check if file is in a group where the current user is a member
+
         # Update the last accessed timestamp
         current_timestamp = get_current_timestamp()
         self.config["users"][file_owner_id]["files"][file_name]["last_accessed"] = current_timestamp
@@ -827,6 +829,8 @@ class Operations:
 
             # INFO if the shared file exists in the current user's shared files,
             # then the user has some type of permission to it.
+
+        # TODO check if file is in a group where the current user is a member
 
         # Get file details
         file_metadata = self.config["users"][file_owner_id]["files"][file_name]
@@ -896,7 +900,7 @@ class Operations:
                         del self.config["groups"][group_id]["files"][file_owner_id]
                     del self.config["users"][file_owner_id]["files"][file_name]["acl"]["groups"][group_id]
 
-    # TODO replace, details functions
+    # TODO replace functions
 
     # INFO
     # When deleting files that can be in one or more groups,
