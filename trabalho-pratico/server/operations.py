@@ -37,13 +37,16 @@ def get_current_timestamp() -> str:
     "Get the current timestamp in ISO 8601 format."
     return datetime.datetime.now().isoformat()
 
+
 def is_valid_name(name: str) -> bool:
     return isinstance(name, str) and len(name.strip()) > 0 and name.isalnum()
+
 
 def is_valid_permissions(permissions: str) -> bool:
     "Check if the given permissions are valid, i.e., 'r', 'w', or 'rw'."
     valid_permissions = ["r", "w", "rw"]
     return permissions in valid_permissions
+
 
 def validate_params(**kwargs):
     for key, value in kwargs.items():
@@ -55,6 +58,7 @@ def validate_params(**kwargs):
 ###
 
 # INFO Most operations assume that the current user exists in the metadata file
+
 
 class Operations:
     def __init__(self, config: dict, vault_path: str):
@@ -70,9 +74,9 @@ class Operations:
     ###
 
     def create_user(self,
-                    username) -> str:
+                    username: str) -> str:
         # Validate parameters
-        validate_params(username = username)
+        validate_params(username=username)
 
         # Check if the username already exists
         if username in self.config["users"]:
@@ -98,10 +102,8 @@ class Operations:
                          file_name: str,
                          file_contents: bytes) -> None:
         # Validate parameters
-        validate_params(
-            current_user_id = current_user_id,
-            file_name = file_name
-        )
+        validate_params(current_user_id=current_user_id,
+                        file_name=file_name)
 
         # Check valid filename
         if not is_valid_name(file_name):
@@ -137,7 +139,7 @@ class Operations:
     def list_user_personal_files(self,
                                  current_user_id: str) -> list:
         # Validate parameters
-        validate_params(current_user_id = current_user_id)
+        validate_params(current_user_id=current_user_id)
 
         return list(self.config["users"][current_user_id]["files"].keys())  # filenames
 
@@ -145,10 +147,8 @@ class Operations:
                                current_user_id: str,
                                shared_by_user_id: str) -> list:
         # Validate parameters
-        validate_params(
-            current_user_id = current_user_id,
-            shared_by_user_id = shared_by_user_id
-        )
+        validate_params(current_user_id=current_user_id,
+                        shared_by_user_id=shared_by_user_id)
 
         # Check if the shared user exists
         if shared_by_user_id not in self.config["users"]:
@@ -166,10 +166,8 @@ class Operations:
                               current_user_id: str,
                               group_id: str) -> list:
         # Validate parameters
-        validate_params(
-            current_user_id = current_user_id,
-            group_id = group_id
-        )
+        validate_params(current_user_id=current_user_id,
+                        group_id=group_id)
 
         # Check if the group exists
         if group_id not in self.config["groups"]:
@@ -202,12 +200,10 @@ class Operations:
                         user_id_to_share: str,
                         permissions: str) -> None:
         # Validate parameters
-        validate_params(
-            current_user_id = current_user_id,
-            file_id = file_id,
-            user_id_to_share = user_id_to_share,
-            permissions = permissions
-        )
+        validate_params(current_user_id=current_user_id,
+                        file_id=file_id,
+                        user_id_to_share=user_id_to_share,
+                        permissions=permissions)
 
         # Check if the given permissions are valid
         permissions = permissions.lower()
@@ -239,11 +235,9 @@ class Operations:
                                      file_id: str,
                                      user_id_to_revoke: str) -> None:
         # Validate parameters
-        validate_params(
-            current_user_id = current_user_id,
-            file_id = file_id,
-            user_id_to_revoke = user_id_to_revoke
-        )
+        validate_params(current_user_id=current_user_id,
+                        file_id=file_id,
+                        user_id_to_revoke=user_id_to_revoke)
 
         # Check if the user to revoke the file permissions from exists
         if user_id_to_revoke not in self.config["users"]:
@@ -276,10 +270,8 @@ class Operations:
                      current_user_id: str,
                      group_name: str) -> str:
         # Validate parameters
-        validate_params(
-            current_user_id = current_user_id,
-            group_name = group_name
-        )
+        validate_params(current_user_id=current_user_id,
+                        group_name=group_name)
 
         # Check if the group_name is valid
         if not is_valid_name(group_name):
@@ -307,10 +299,8 @@ class Operations:
                      current_user_id: str,
                      group_id: str) -> None:
         # Validate parameters
-        validate_params(
-            current_user_id = current_user_id,
-            group_id = group_id
-        )
+        validate_params(current_user_id=current_user_id,
+                        group_id=group_id)
 
         # Check if the group exists
         if group_id not in self.config["groups"]:
@@ -347,12 +337,10 @@ class Operations:
                           user_id: str,
                           permissions: str) -> None:
         # Validate parameters
-        validate_params(
-            current_user_id = current_user_id,
-            group_id = group_id,
-            user_id = user_id,
-            permissions = permissions
-        )
+        validate_params(current_user_id=current_user_id,
+                        group_id=group_id,
+                        user_id=user_id,
+                        permissions=permissions)
 
         # Check if the given permissions are valid
         permissions = permissions.lower()
@@ -401,11 +389,9 @@ class Operations:
                                group_id: str,
                                user_id: str) -> None:
         # Validate parameters
-        validate_params(
-            current_user_id = current_user_id,
-            group_id = group_id,
-            user_id = user_id
-        )
+        validate_params(current_user_id=current_user_id,
+                        group_id=group_id,
+                        user_id=user_id)
 
         # Check if the group exists
         if group_id not in self.config["groups"]:
@@ -457,12 +443,10 @@ class Operations:
                                       user_id: str,
                                       permissions: str) -> None:
         # Validate parameters
-        validate_params(
-            current_user_id = current_user_id,
-            group_id = group_id,
-            user_id = user_id,
-            permissions = permissions
-        )
+        validate_params(current_user_id=current_user_id,
+                        group_id=group_id,
+                        user_id=user_id,
+                        permissions=permissions)
 
         # Check if the given permissions are valid
         permissions = permissions.lower()
@@ -495,11 +479,10 @@ class Operations:
         # Change the user's permissions in the group
         self.config["groups"][group_id]["members"][user_id] = permissions
 
-    def list_user_groups(self, current_user_id: str) -> dict:
+    def list_user_groups(self,
+                         current_user_id: str) -> dict:
         # Validate parameters
-        validate_params(
-            current_user_id = current_user_id
-        )
+        validate_params(current_user_id=current_user_id)
 
         results = {
             "own_groups": [],
@@ -530,11 +513,9 @@ class Operations:
                           file_name: str,
                           file_contents: bytes) -> str:
         # Validate parameters
-        validate_params(
-            current_user_id = current_user_id,
-            group_id = group_id,
-            file_name = file_name
-        )
+        validate_params(current_user_id=current_user_id,
+                        group_id=group_id,
+                        file_name=file_name)
 
         # Check if file name is valid
         if not is_valid_name(file_name):
@@ -597,11 +578,9 @@ class Operations:
                                group_id: str,
                                file_id: str) -> None:
         # Validate parameters
-        validate_params(
-            current_user_id = current_user_id,
-            group_id = group_id,
-            file_id = file_id
-        )
+        validate_params(current_user_id=current_user_id,
+                        group_id=group_id,
+                        file_id=file_id)
 
         # Check if the group exists
         if group_id not in self.config["groups"]:
@@ -655,11 +634,9 @@ class Operations:
                                group_id: str,
                                user_id: str) -> None:
         # Validate parameters
-        validate_params(
-            current_user_id = current_user_id,
-            group_id = group_id,
-            user_id = user_id
-        )
+        validate_params(current_user_id=current_user_id,
+                        group_id=group_id,
+                        user_id=user_id)
 
         # Check if the group exists
         if group_id not in self.config["groups"]:
@@ -705,11 +682,9 @@ class Operations:
                                     group_id: str,
                                     user_id: str) -> None:
         # Validate parameters
-        validate_params(
-            current_user_id = current_user_id,
-            group_id = group_id,
-            user_id = user_id
-        )
+        validate_params(current_user_id=current_user_id,
+                        group_id=group_id,
+                        user_id=user_id)
 
         # Check if the group exists
         if group_id not in self.config["groups"]:
@@ -852,10 +827,8 @@ class Operations:
     def delete_file(self,
                     current_user_id: str,
                     file_id: str) -> None:
-        validate_params(
-            current_user_id = current_user_id,
-            file_id = file_id
-        )
+        validate_params(current_user_id=current_user_id,
+                        file_id=file_id)
 
         file_owner_id, _, file_name = file_id.partition(":")
 
