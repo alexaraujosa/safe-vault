@@ -2,17 +2,14 @@ import os
 import datetime
 from exceptions import (
     PermissionDenied,
-    GroupNotFound,
+    UserExists,
     UserNotFound,
-    InvalidPermissions,
+    SharedUserNotFound,
+    GroupExists,
+    GroupNotFound,
     UserNotMemberOfGroup,
     UserNotModeratorOfGroup,
-    GroupAlreadyExists,
     FileNotFoundOnVault,
-    UserAlreadyExists,
-    SharedUserNotFound,
-    InvalidGroupName,
-    InvalidFileName,
     InvalidParameter
 )
 
@@ -38,27 +35,122 @@ def get_current_timestamp() -> str:
     return datetime.datetime.now().isoformat()
 
 
+def write_file(file_path: str, file_contents: bytes) -> None:
+    """
+    Atomically write the file contents to the given file path.
+
+    Raises OSError if the file cannot be written.
+    """
+    # Create the temporary file path
+    tmp_file_path = f"{file_path}.tmp"
+    try:
+        # Write the file contents to the temporary file
+        with open(tmp_file_path, "wb") as tmp_file:
+            tmp_file.write(file_contents)
+
+        # Rename the temporary file to the original file name
+        os.rename(tmp_file_path, file_path)
+    except Exception as e:
+        # Remove the temporary file if it exists
+        if os.path.exists(tmp_file_path):
+            os.remove(tmp_file_path)
+
+        raise OSError(f"Failed to write file contents to vault: {e}")
+
+
 def is_valid_name(name: str) -> bool:
-    return isinstance(name, str) and len(name.strip()) > 0 and name.isalnum()
+    "Check if the given name is valid, i.e., not empty and alphanumeric."
+    return isinstance(name, str) and len(name) > 0 and name.isalnum()
+
+
+def is_valid_user_id(user_id: str) -> bool:
+    "Check if the given user ID is valid name and does not contain any ':'."
+    return is_valid_name(user_id) and ':' not in user_id
+
+
+def is_valid_file_id(file_id: str) -> bool:
+    """
+    Check if the given file ID is valid, i.e., in the format 'user_id:file_name',
+    where "user_id" is a valid user ID and "file_name" is a valid name.
+    """
+    if not isinstance(file_id, str):
+        return False
+
+    partitioned_value = file_id.partition(":")
+    if (
+        partitioned_value[1] != ":"
+        or not is_valid_user_id(partitioned_value[0])
+        or not is_valid_name(partitioned_value[2])
+    ):
+        return False
+    return True
 
 
 def is_valid_permissions(permissions: str) -> bool:
-    "Check if the given permissions are valid, i.e., 'r', 'w', or 'rw'."
-    valid_permissions = ["r", "w", "rw"]
-    return permissions in valid_permissions
+    "Check if the given permissions are valid, i.e., 'r' or 'w'."
+    return permissions in ["r", "w"]
 
 
-def validate_params(**kwargs):
+def is_valid_key(key: str) -> bool:
+    """
+    Check if the given key is valid, i.e., not empty.
+    TODO In the future validate key characters and size.
+    """
+    return isinstance(key, str) and len(key) > 0
+
+
+def validate_params(**kwargs) -> None:
+    """
+    Validate the given parameters.
+
+    Supported parameters:
+    - user_ids:    list(str)
+    - user_id:     str
+    - group_id:    str
+    - file_id:     str
+    - file_name:   str
+    - permissions: str
+    - key:         str
+
+    Raises:
+    - ValueError for the first validation error found.
+    - InvalidParameter for unsupported parameters.
+    """
     for key, value in kwargs.items():
-        if value is None or len(value) == 0:
-            raise InvalidParameter(key, value)
+        match key:
+            case "user_ids":
+                for user in value:
+                    if not is_valid_user_id(user):
+                        raise ValueError(f"Invalid user ID: {user}")
+            case "user_id":
+                if not is_valid_user_id(user):
+                    raise ValueError(f"Invalid user ID: {user}")
+            case "group_id":
+                if not is_valid_name(value):
+                    raise ValueError(f"Invalid group ID: {value}")
+            case "file_id":
+                if not is_valid_file_id(value):
+                    raise ValueError(f"Invalid file ID: {value}")
+            case "file_name":
+                if not is_valid_name(value):
+                    raise ValueError(f"Invalid file name: {value}")
+            case "permissions":
+                if not is_valid_permissions(value):
+                    raise ValueError(f"Invalid permissions: {value}")
+            case "key":
+                if not is_valid_key(value):
+                    raise ValueError(f"Invalid key: {value}")
+            case _:
+                raise InvalidParameter(key)
+
 
 ###
 # Operations Class
 ###
 
-# INFO Most operations assume that the current user exists in the metadata file
-
+# TODO Update Group, Moderator and File operations methods
+# TODO Don't assume that the current user exists in the metadata file
+# TODO Don't assume owners or moderators have omitted permissions
 
 class Operations:
     def __init__(self, config: dict, vault_path: str):
@@ -70,21 +162,48 @@ class Operations:
             os.mkdir(vault_path, 0o700)
 
     ###
+    # Auxiliary Functions
+    ###
+
+    def user_exists(self, user_id: str) -> None:
+        """
+        Check if the user exists in the metadata file.
+
+        Raises UserNotFound if the user does not exist.
+        """
+        if user_id not in self.config["users"]:
+            raise UserNotFound(user_id)
+
+    def group_exists(self, group_id: str) -> None:
+        """
+        Check if the group exists in the metadata file.
+
+        Raises GroupNotFound if the group does not exist.
+        """
+        if group_id not in self.config["groups"]:
+            raise GroupNotFound(group_id)
+
+    def file_exists(self, user_id: str, file_name: str) -> None:
+        """
+        Check if the file exists in the user's vault.
+
+        Raises FileNotFoundOnVault if the file does not exist.
+        """
+        if file_name not in self.config["users"][user_id]["files"]:
+            raise FileNotFoundOnVault(file_name, user_id)
+
+    ###
     # User Operations
     ###
 
     def create_user(self,
                     username: str) -> str:
-        # Validate parameters
-        validate_params(username=username)
+
+        validate_params(user_id=username)
 
         # Check if the username already exists
         if username in self.config["users"]:
-            raise UserAlreadyExists(username)
-
-        # Check valid username
-        if not is_valid_name(username):
-            raise InvalidParameter(username)
+            raise UserExists(username)
 
         self.config["users"][username] = {
             "created": get_current_timestamp(),
@@ -95,19 +214,18 @@ class Operations:
             "shared_files": {}
         }
 
-        return username  # user id
+        return username  # user_id
 
     def add_file_to_user(self,
                          current_user_id: str,
                          file_name: str,
-                         file_contents: bytes) -> None:
-        # Validate parameters
-        validate_params(current_user_id=current_user_id,
-                        file_name=file_name)
+                         file_contents: bytes,
+                         key: str) -> None:
 
-        # Check valid filename
-        if not is_valid_name(file_name):
-            raise InvalidFileName(file_name)
+        validate_params(user_id=current_user_id,
+                        file_name=file_name,
+                        key=key)
+        self.user_exists(current_user_id)
 
         # Check if the file already exists on user vault
         if file_name in self.config["users"][current_user_id]["files"]:
@@ -117,19 +235,17 @@ class Operations:
         # Write file contents to the vault directory
         file_id = f"{current_user_id}:{file_name}"
         file_path = os.path.join(self.vault_path, file_id)
-        try:
-            with open(file_path, "wb") as file:
-                file.write(file_contents)
-        except Exception as e:
-            raise PermissionDenied(f"Failed to write file contents to vault: {e}")
+        write_file(file_path, file_contents)
 
         # Add file to user metadata
         current_timestamp = get_current_timestamp()
         self.config["users"][current_user_id]["files"][file_name] = {
             "owner": current_user_id,
+            "size": len(file_contents),
             "created": current_timestamp,
             "last_modified": current_timestamp,
             "last_accessed": current_timestamp,
+            "key": key,
             "acl": {
                 "users": {},
                 "groups": []
@@ -138,57 +254,52 @@ class Operations:
 
     def list_user_personal_files(self,
                                  current_user_id: str) -> list:
-        # Validate parameters
-        validate_params(current_user_id=current_user_id)
 
+        validate_params(user_id=current_user_id)
+        self.user_exists(current_user_id)
         return list(self.config["users"][current_user_id]["files"].keys())  # filenames
 
     def list_user_shared_files(self,
                                current_user_id: str,
-                               shared_by_user_id: str) -> list:
-        # Validate parameters
-        validate_params(current_user_id=current_user_id,
-                        shared_by_user_id=shared_by_user_id)
+                               shared_by_user_id: str) -> list[tuple[str, str]]:
 
-        # Check if the shared user exists
-        if shared_by_user_id not in self.config["users"]:
-            raise UserNotFound(shared_by_user_id)
+        validate_params(user_ids=[current_user_id, shared_by_user_id])
+        self.user_exists(current_user_id)
+        self.user_exists(shared_by_user_id)
 
-        # Check if exists shared user entry
+        # Check if the shared user entry exists in the current user metadata
         shared_files = self.config["users"][current_user_id]["shared_files"]
-
         if shared_by_user_id not in shared_files:
             raise SharedUserNotFound(current_user_id, shared_by_user_id)
 
-        return list(shared_files[shared_by_user_id].items())
+        # Return the list with the (filename, permissions) tuples
+        return [
+            (filename, shared_files[shared_by_user_id][filename]["permissions"])
+            for filename in shared_files[shared_by_user_id]
+        ]
 
     def list_user_group_files(self,
                               current_user_id: str,
                               group_id: str) -> list:
-        # Validate parameters
-        validate_params(current_user_id=current_user_id,
+
+        validate_params(user_id=current_user_id,
                         group_id=group_id)
+        self.user_exists(current_user_id)
+        self.group_exists(group_id)
 
-        # Check if the group exists
-        if group_id not in self.config["groups"]:
-            raise GroupNotFound(group_id)
-
+        # List the user files in groups he's a member of
         files = []
-
         user = self.config["users"][current_user_id]
         group_files = self.config["groups"][group_id]["files"]
 
-        if group_id in user["own_groups"] + user["moderator_groups"]:
+        if group_id in user["groups"]:
+            # Get the user permissions in the group
+            permissions = self.config["groups"][group_id]["members"][current_user_id]
+
+            # List all files in the group
             for file_owner in group_files:
                 for filename in group_files[file_owner]:
-                    files.append((filename, "rw"))
-
-        elif group_id in user["groups"]:
-            user_permissions = self.config["groups"][group_id]["members"][current_user_id]
-            for file_owner in group_files:
-                for filename in group_files[file_owner]:
-                    files.append((filename, user_permissions))
-
+                    files.append((filename, permissions))
         else:
             raise UserNotMemberOfGroup(current_user_id, group_id)
 
@@ -198,28 +309,19 @@ class Operations:
                         current_user_id: str,
                         file_id: str,
                         user_id_to_share: str,
-                        permissions: str) -> None:
-        # Validate parameters
-        validate_params(current_user_id=current_user_id,
+                        permissions: str,
+                        key: str) -> None:
+
+        validate_params(user_ids=[current_user_id, user_id_to_share],
                         file_id=file_id,
-                        user_id_to_share=user_id_to_share,
-                        permissions=permissions)
+                        permissions=permissions,
+                        key=key)
+        self.user_exists(current_user_id)
+        self.user_exists(user_id_to_share)
 
-        # Check if the given permissions are valid
-        permissions = permissions.lower()
-        if not is_valid_permissions(permissions):
-            raise InvalidPermissions(permissions)
-
-        # Check if the user to share the file with exists
-        if user_id_to_share not in self.config["users"]:
-            raise UserNotFound(user_id_to_share)
-
-        # Check if the file exists on metadata file
-        # This will also check if the current user is the owner of the file
+        # INFO This will implicitly check if the current user is the file owner
         file_name = file_id.partition(":")[2]
-
-        if file_name not in self.config["users"][current_user_id]["files"]:
-            raise FileNotFoundOnVault(file_name, current_user_id)
+        self.file_exists(current_user_id, file_name)
 
         # Add the respective permissions in ACL to the file being shared
         self.config["users"][current_user_id]["files"][file_name]["acl"]["users"][user_id_to_share] = permissions
@@ -228,27 +330,24 @@ class Operations:
         if not self.config["users"][user_id_to_share]["shared_files"].get(current_user_id):
             self.config["users"][user_id_to_share]["shared_files"][current_user_id] = {}
 
-        self.config["users"][user_id_to_share]["shared_files"][current_user_id][file_name] = permissions
+        self.config["users"][user_id_to_share]["shared_files"][current_user_id][file_name] = {
+            "permissions": permissions,
+            "key": key
+        }
 
     def revoke_user_file_permissions(self,
                                      current_user_id: str,
                                      file_id: str,
                                      user_id_to_revoke: str) -> None:
-        # Validate parameters
-        validate_params(current_user_id=current_user_id,
-                        file_id=file_id,
-                        user_id_to_revoke=user_id_to_revoke)
 
-        # Check if the user to revoke the file permissions from exists
-        if user_id_to_revoke not in self.config["users"]:
-            raise UserNotFound(user_id_to_revoke)
+        validate_params(user_ids=[current_user_id, user_id_to_revoke],
+                        file_id=file_id)
+        self.user_exists(current_user_id)
+        self.user_exists(user_id_to_revoke)
 
-        # Check if the file exists on metadata file
-        # This will also check if the current user is the owner of the file
+        # INFO This will implicitly check if the current user is the file owner
         file_name = file_id.partition(":")[2]
-
-        if file_name not in self.config["users"][current_user_id]["files"]:
-            raise FileNotFoundOnVault(file_name, current_user_id)
+        self.file_exists(current_user_id, file_name)
 
         # Revoke the file access ACL entry
         if user_id_to_revoke in self.config["users"][current_user_id]["files"][file_name]["acl"]["users"]:
@@ -262,6 +361,24 @@ class Operations:
             if not self.config["users"][user_id_to_revoke]["shared_files"][current_user_id]:
                 del self.config["users"][user_id_to_revoke]["shared_files"][current_user_id]
 
+        # TODO File reencryption for safety!
+        # 1. Server sends the following to the client:
+        #   - Request to reencrypt file
+        #   - File contents
+        #   - File metadata (to store the symmetric key with the name of the file_id) [Alternatively: just the file_id]
+        #   - Encrypted symmetric key
+        #   - Dictionary of public keys of the users that have access to the file
+        # 2. Client decrypts symmetric key and file contents
+        # 3. Client generates a new AES symmetric key
+        # 4. Client reencrypts the file contents with the new symmetric key
+        # 5. Client encrypts the symmetric key for each user public key received and himself
+        # 6. Client sends the following to the server:
+        #   - Reencrypt request response
+        #   - File contents
+        #   - Owner encrypted symmetric key
+        #   - Dictionary of the symmetric keys encrypted with the public keys of the users
+        # 7. Server stores the new file contents and the new symmetric keys
+
     ###
     # Group Operations
     ###
@@ -269,17 +386,14 @@ class Operations:
     def create_group(self,
                      current_user_id: str,
                      group_name: str) -> str:
-        # Validate parameters
-        validate_params(current_user_id=current_user_id,
-                        group_name=group_name)
 
-        # Check if the group_name is valid
-        if not is_valid_name(group_name):
-            raise InvalidGroupName(group_name)
+        validate_params(user_id=current_user_id,
+                        group_id=group_name)
+        self.user_exists(current_user_id)
 
         # Check if the group already exists
         if group_name in self.config["groups"]:
-            raise GroupAlreadyExists(group_name)
+            raise GroupExists(group_name)
 
         # Create the group
         self.config["groups"][group_name] = {
@@ -298,13 +412,11 @@ class Operations:
     def delete_group(self,
                      current_user_id: str,
                      group_id: str) -> None:
-        # Validate parameters
-        validate_params(current_user_id=current_user_id,
-                        group_id=group_id)
 
-        # Check if the group exists
-        if group_id not in self.config["groups"]:
-            raise GroupNotFound(group_id)
+        validate_params(user_id=current_user_id,
+                        group_id=group_id)
+        self.user_exists(current_user_id)
+        self.group_exists(group_id)
 
         # Check if the user is the owner of the group
         group = self.config["groups"][group_id]
@@ -336,24 +448,13 @@ class Operations:
                           group_id: str,
                           user_id: str,
                           permissions: str) -> None:
-        # Validate parameters
-        validate_params(current_user_id=current_user_id,
+
+        validate_params(user_ids=[current_user_id, user_id],
                         group_id=group_id,
-                        user_id=user_id,
                         permissions=permissions)
-
-        # Check if the given permissions are valid
-        permissions = permissions.lower()
-        if not is_valid_permissions(permissions):
-            raise InvalidPermissions(permissions)
-
-        # Check if the group exists
-        if group_id not in self.config["groups"]:
-            raise GroupNotFound(group_id)
-
-        # Check if the user exists
-        if user_id not in self.config["users"]:
-            raise UserNotFound(user_id)
+        self.user_exists(current_user_id)
+        self.user_exists(user_id)
+        self.group_exists(group_id)
 
         # Check if current user is the owner or moderator of the group
         group = self.config["groups"][group_id]
@@ -388,18 +489,12 @@ class Operations:
                                current_user_id: str,
                                group_id: str,
                                user_id: str) -> None:
-        # Validate parameters
-        validate_params(current_user_id=current_user_id,
-                        group_id=group_id,
-                        user_id=user_id)
 
-        # Check if the group exists
-        if group_id not in self.config["groups"]:
-            raise GroupNotFound(group_id)
-
-        # Check if the user exists
-        if user_id not in self.config["users"]:
-            raise UserNotFound(user_id)
+        validate_params(user_ids=[current_user_id, user_id],
+                        group_id=group_id)
+        self.user_exists(current_user_id)
+        self.user_exists(user_id)
+        self.group_exists(group_id)
 
         # Check if current user is the owner or moderator of the group
         group = self.config["groups"][group_id]
@@ -442,24 +537,13 @@ class Operations:
                                       group_id: str,
                                       user_id: str,
                                       permissions: str) -> None:
-        # Validate parameters
-        validate_params(current_user_id=current_user_id,
+
+        validate_params(user_ids=[current_user_id, user_id],
                         group_id=group_id,
-                        user_id=user_id,
                         permissions=permissions)
-
-        # Check if the given permissions are valid
-        permissions = permissions.lower()
-        if not is_valid_permissions(permissions):
-            raise InvalidPermissions(permissions)
-
-        # Check if the group exists
-        if group_id not in self.config["groups"]:
-            raise GroupNotFound(group_id)
-
-        # Check if the user exists
-        if user_id not in self.config["users"]:
-            raise UserNotFound(user_id)
+        self.user_exists(current_user_id)
+        self.user_exists(user_id)
+        self.group_exists(group_id)
 
         # Check if current user is the owner or moderator of the group
         group = self.config["groups"][group_id]
@@ -481,8 +565,9 @@ class Operations:
 
     def list_user_groups(self,
                          current_user_id: str) -> dict:
-        # Validate parameters
-        validate_params(current_user_id=current_user_id)
+
+        validate_params(user_id=current_user_id)
+        self.user_exists(current_user_id)
 
         results = {
             "own_groups": [],
@@ -512,18 +597,12 @@ class Operations:
                           group_id: str,
                           file_name: str,
                           file_contents: bytes) -> str:
-        # Validate parameters
-        validate_params(current_user_id=current_user_id,
+
+        validate_params(user_id=current_user_id,
                         group_id=group_id,
                         file_name=file_name)
-
-        # Check if file name is valid
-        if not is_valid_name(file_name):
-            raise InvalidFileName(file_name)
-
-        # Check if the group exists
-        if group_id not in self.config["groups"]:
-            raise GroupNotFound(group_id)
+        self.user_exists(current_user_id)
+        self.group_exists(group_id)
 
         # Check if the user can write to the group
         # (aka the owner, a moderator or a member with write permissions)
@@ -577,14 +656,12 @@ class Operations:
                                current_user_id: str,
                                group_id: str,
                                file_id: str) -> None:
-        # Validate parameters
-        validate_params(current_user_id=current_user_id,
+
+        validate_params(user_id=current_user_id,
                         group_id=group_id,
                         file_id=file_id)
-
-        # Check if the group exists
-        if group_id not in self.config["groups"]:
-            raise GroupNotFound(group_id)
+        self.user_exists(current_user_id)
+        self.group_exists(group_id)
 
         # Extract the user and file name from the file ID
         # INFO this assumes that usernames can't contain ':', but file names can
@@ -633,18 +710,12 @@ class Operations:
                                current_user_id: str,
                                group_id: str,
                                user_id: str) -> None:
-        # Validate parameters
-        validate_params(current_user_id=current_user_id,
-                        group_id=group_id,
-                        user_id=user_id)
 
-        # Check if the group exists
-        if group_id not in self.config["groups"]:
-            raise GroupNotFound(group_id)
-
-        # Check if the user exists
-        if user_id not in self.config["users"]:
-            raise UserNotFound(user_id)
+        validate_params(user_ids=[current_user_id, user_id],
+                        group_id=group_id)
+        self.user_exists(current_user_id)
+        self.user_exists(user_id)
+        self.group_exists(group_id)
 
         # Check if current user is the owner of the group
         group = self.config["groups"][group_id]
@@ -681,18 +752,12 @@ class Operations:
                                     current_user_id: str,
                                     group_id: str,
                                     user_id: str) -> None:
-        # Validate parameters
-        validate_params(current_user_id=current_user_id,
-                        group_id=group_id,
-                        user_id=user_id)
 
-        # Check if the group exists
-        if group_id not in self.config["groups"]:
-            raise GroupNotFound(group_id)
-
-        # Check if the user exists
-        if user_id not in self.config["users"]:
-            raise UserNotFound(user_id)
+        validate_params(user_ids=[current_user_id, user_id],
+                        group_id=group_id)
+        self.user_exists(current_user_id)
+        self.user_exists(user_id)
+        self.group_exists(group_id)
 
         # Check if current user is the owner of the group
         group = self.config["groups"][group_id]
@@ -723,9 +788,10 @@ class Operations:
     def read_file(self,
                   current_user_id: str,
                   file_id: str) -> bytes:
-        # Validate parameters
-        validate_params(current_user_id=current_user_id,
+
+        validate_params(user_id=current_user_id,
                         file_id=file_id)
+        self.user_exists(current_user_id)
 
         # Extract the user and file name from the file ID
         file_owner_id, _, file_name = file_id.partition(":")
@@ -775,14 +841,15 @@ class Operations:
     def file_details(self,
                      current_user_id: str,
                      file_id: str) -> dict:
-        # Validate parameters
-        validate_params(current_user_id=current_user_id,
+
+        validate_params(user_id=current_user_id,
                         file_id=file_id)
+        self.user_exists(current_user_id)
 
         # Extract the user and file name from the file ID
         file_owner_id, _, file_name = file_id.partition(":")
 
-        # Check owner existance
+        # Check if file owner exists
         if file_owner_id not in self.config["users"]:
             raise UserNotFound(file_owner_id)
 
@@ -827,14 +894,16 @@ class Operations:
     def delete_file(self,
                     current_user_id: str,
                     file_id: str) -> None:
-        validate_params(current_user_id=current_user_id,
+
+        validate_params(user_id=current_user_id,
                         file_id=file_id)
+        self.user_exists(current_user_id)
 
         file_owner_id, _, file_name = file_id.partition(":")
 
-        # Check owner existance
+        # Check if file owner exists
         if file_owner_id not in self.config["users"]:
-            raise InvalidFileName(file_id)
+            raise UserNotFound(file_owner_id)
 
         # Validate file existance
         if file_name not in self.config["users"][file_owner_id]["files"]:
