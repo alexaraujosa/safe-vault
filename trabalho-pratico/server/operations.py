@@ -77,7 +77,7 @@ class Operations:
         # Check if the username already exists
         if username in self.config["users"]:
             raise UserAlreadyExists(username)
-        
+
         # Check valid username
         if not is_valid_name(username):
             raise InvalidParameter(username)
@@ -99,7 +99,7 @@ class Operations:
                          file_contents: bytes) -> None:
         # Validate parameters
         validate_params(
-            current_user_id = current_user_id, 
+            current_user_id = current_user_id,
             file_name = file_name
         )
 
@@ -427,7 +427,7 @@ class Operations:
         # Check if the user is not the owner of the group
         if user_id == group["owner"]:
             raise PermissionDenied(f"User {user_id} is the owner of group {group_id}.")
-        
+
         # Check if the user is not a member of the group
         if user_id not in group["members"]:
             raise UserNotMemberOfGroup(user_id, group_id)
@@ -795,6 +795,56 @@ class Operations:
 
         return file_contents
 
+    def file_details(self,
+                     current_user_id: str,
+                     file_id: str) -> dict:
+        # Validate parameters
+        validate_params(current_user_id=current_user_id,
+                        file_id=file_id)
+
+        # Extract the user and file name from the file ID
+        file_owner_id, _, file_name = file_id.partition(":")
+
+        # Check owner existance
+        if file_owner_id not in self.config["users"]:
+            raise UserNotFound(file_owner_id)
+
+        # Check if the file exists in the user's files
+        if file_name not in self.config["users"][file_owner_id]["files"]:
+            raise FileNotFoundOnVault(file_name, file_owner_id)
+
+        # Check if the user has permission to read or write the file
+        if current_user_id != file_owner_id:
+            # Check if the file owner has shared any files with the current user
+            if file_owner_id not in self.config["users"][current_user_id]["shared_files"]:
+                raise PermissionDenied(f"User {file_owner_id} has not shared "
+                                       f"any files with {current_user_id}.")
+
+            # Check if the file entry exists in the respective shared files
+            if file_name not in self.config["users"][current_user_id]["shared_files"][file_owner_id]:
+                raise PermissionDenied(f"The file {file_name} is not shared with "
+                                       f"user {current_user_id}.")
+
+            # INFO if the shared file exists in the current user's shared files,
+            # then the user has some type of permission to it.
+
+        # Get file details
+        file_metadata = self.config["users"][file_owner_id]["files"][file_name]
+
+        file_details = {}
+        file_details["file_id"] = file_id
+        file_details["file_name"] = file_name
+        file_details["file_owner"] = file_owner_id
+        # TODO file size
+        file_details["file_created"] = file_metadata["created"]
+        file_details["file_last_modified"] = file_metadata["last_modified"]
+        file_details["file_last_accessed"] = file_metadata["last_accessed"]
+        file_details["acl"] = file_metadata["acl"]
+        # TODO get group permissions where the file exists
+
+        # Return file details
+        return file_details
+
     def delete_file(self,
                     current_user_id: str,
                     file_id: str) -> None:
@@ -808,11 +858,11 @@ class Operations:
         # Check owner existance
         if file_owner_id not in self.config["users"]:
             raise InvalidFileName(file_id)
-        
+
         # Validate file existance
         if file_name not in self.config["users"][file_owner_id]["files"]:
             raise FileNotFoundOnVault(file_id, file_owner_id)
-        
+
         # Current user is the owner
         if current_user_id == file_owner_id:
 
@@ -846,7 +896,7 @@ class Operations:
                         del self.config["groups"][group_id]["files"][file_owner_id]
                     del self.config["users"][file_owner_id]["files"][file_name]["acl"]["groups"][group_id]
 
-    # TODO replace, details and read functions
+    # TODO replace, details functions
 
     # INFO
     # When deleting files that can be in one or more groups,
