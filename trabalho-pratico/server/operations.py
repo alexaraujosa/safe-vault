@@ -304,6 +304,8 @@ class Operations:
 
         return files
 
+    # TODO before calling this function the server must send the shared user public key
+    # so the client returns us the encrypted symmetric key for that user receiving the share
     def share_user_file(self,
                         current_user_id: str,
                         file_id: str,
@@ -873,13 +875,13 @@ class Operations:
         file_metadata = self.config["users"][file_owner_id]["files"][file_name]
 
         file_details = {}
-        file_details["file_id"] = file_id
-        file_details["file_name"] = file_name
-        file_details["file_owner"] = file_owner_id
-        # TODO file size
-        file_details["file_created"] = file_metadata["created"]
-        file_details["file_last_modified"] = file_metadata["last_modified"]
-        file_details["file_last_accessed"] = file_metadata["last_accessed"]
+        file_details["id"] = file_id
+        file_details["name"] = file_name
+        file_details["owner"] = file_owner_id
+        file_details["size"] = file_metadata["size"]
+        file_details["created"] = file_metadata["created"]
+        file_details["last_modified"] = file_metadata["last_modified"]
+        file_details["last_accessed"] = file_metadata["last_accessed"]
         file_details["acl"] = file_metadata["acl"]
         # TODO get group permissions where the file exists
 
