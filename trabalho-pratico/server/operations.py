@@ -1,6 +1,7 @@
 import os
 import datetime
-from exceptions import (
+from common.validation import validate_params
+from common.exceptions import (
     PermissionDenied,
     UserExists,
     UserNotFound,
@@ -9,8 +10,7 @@ from exceptions import (
     GroupNotFound,
     UserNotMemberOfGroup,
     UserNotModeratorOfGroup,
-    FileNotFoundOnVault,
-    InvalidParameter
+    FileNotFoundOnVault
 )
 
 # Considerations:
@@ -56,92 +56,6 @@ def write_file(file_path: str, file_contents: bytes) -> None:
             os.remove(tmp_file_path)
 
         raise OSError(f"Failed to write file contents to vault: {e}")
-
-
-def is_valid_name(name: str) -> bool:
-    "Check if the given name is valid, i.e., not empty and alphanumeric."
-    return isinstance(name, str) and len(name) > 0 and name.isalnum()
-
-
-def is_valid_user_id(user_id: str) -> bool:
-    "Check if the given user ID is valid name and does not contain any ':'."
-    return is_valid_name(user_id) and ':' not in user_id
-
-
-def is_valid_file_id(file_id: str) -> bool:
-    """
-    Check if the given file ID is valid, i.e., in the format 'user_id:file_name',
-    where "user_id" is a valid user ID and "file_name" is a valid name.
-    """
-    if not isinstance(file_id, str):
-        return False
-
-    partitioned_value = file_id.partition(":")
-    if (
-        partitioned_value[1] != ":"
-        or not is_valid_user_id(partitioned_value[0])
-        or not is_valid_name(partitioned_value[2])
-    ):
-        return False
-    return True
-
-
-def is_valid_permissions(permissions: str) -> bool:
-    "Check if the given permissions are valid, i.e., 'r' or 'w'."
-    return permissions in ["r", "w"]
-
-
-def is_valid_key(key: str) -> bool:
-    """
-    Check if the given key is valid, i.e., not empty.
-    TODO In the future validate key characters and size.
-    """
-    return isinstance(key, str) and len(key) > 0
-
-
-def validate_params(**kwargs) -> None:
-    """
-    Validate the given parameters.
-
-    Supported parameters:
-    - user_ids:    list(str)
-    - user_id:     str
-    - group_id:    str
-    - file_id:     str
-    - file_name:   str
-    - permissions: str
-    - key:         str
-
-    Raises:
-    - ValueError for the first validation error found.
-    - InvalidParameter for unsupported parameters.
-    """
-    for key, value in kwargs.items():
-        match key:
-            case "user_ids":
-                for user in value:
-                    if not is_valid_user_id(user):
-                        raise ValueError(f"Invalid user ID: {user}")
-            case "user_id":
-                if not is_valid_user_id(user):
-                    raise ValueError(f"Invalid user ID: {user}")
-            case "group_id":
-                if not is_valid_name(value):
-                    raise ValueError(f"Invalid group ID: {value}")
-            case "file_id":
-                if not is_valid_file_id(value):
-                    raise ValueError(f"Invalid file ID: {value}")
-            case "file_name":
-                if not is_valid_name(value):
-                    raise ValueError(f"Invalid file name: {value}")
-            case "permissions":
-                if not is_valid_permissions(value):
-                    raise ValueError(f"Invalid permissions: {value}")
-            case "key":
-                if not is_valid_key(value):
-                    raise ValueError(f"Invalid key: {value}")
-            case _:
-                raise InvalidParameter(key)
 
 
 ###
@@ -378,6 +292,45 @@ class Operations:
         #   - Owner encrypted symmetric key
         #   - Dictionary of the symmetric keys encrypted with the public keys of the users
         # 7. Server stores the new file contents and the new symmetric keys
+
+    def delete_user(self,
+                    current_user_id: str) -> None:
+
+        validate_params(user_id=current_user_id)
+        self.user_exists(current_user_id)
+
+        # Delete the user's files from the vault
+        for file_name in self.config["users"][current_user_id]["files"]:
+            # Delete the file from shared users
+            for user_id in self.config["users"][current_user_id]["files"][file_name]["acl"]["users"]:
+                del self.config["users"][user_id]["shared_files"][current_user_id][file_name]
+
+            # Delete the file from groups
+            for group_id in self.config["users"][current_user_id]["files"][file_name]["acl"]["groups"]:
+                del self.config["groups"][group_id]["files"][current_user_id][file_name]
+
+            # Delete the file from the vault
+            file_id = f"{current_user_id}:{file_name}"
+            file_path = os.path.join(self.vault_path, file_id)
+            try:
+                os.remove(file_path)
+            except Exception as e:
+                raise OSError(f"Failed to delete file from vault: {e}")
+
+        # Delete the user from the groups where he is a member
+        for group_id in self.config["users"][current_user_id]["groups"]:
+            del self.config["groups"][group_id]["members"][current_user_id]
+
+        # Delete the user from the groups where he is a moderator
+        for group_id in self.config["users"][current_user_id]["moderator_groups"]:
+            del self.config["groups"][group_id]["moderators"][current_user_id]
+
+        # Delete groups owned by the user
+        for group_id in self.config["users"][current_user_id]["own_groups"]:
+            del self.config["groups"][group_id]
+
+        # Delete the user from the metadata
+        del self.config["users"][current_user_id]
 
     ###
     # Group Operations
