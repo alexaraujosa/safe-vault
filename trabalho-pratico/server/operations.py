@@ -62,7 +62,7 @@ def write_file(file_path: str, file_contents: bytes) -> None:
 # Operations Class
 ###
 
-# TODO Update Group, Moderator and File operations methods
+# TODO Update File operations methods
 # TODO Don't assume owners or moderators have omitted permissions
 
 class Operations:
@@ -338,27 +338,37 @@ class Operations:
 
     def create_group(self,
                      current_user_id: str,
-                     group_name: str) -> str:
+                     group_name: str,
+                     group_key: str) -> str:
 
         validate_params(user_id=current_user_id,
-                        group_id=group_name)
+                        group_id=group_name,
+                        key=group_key)
         self.user_exists(current_user_id)
 
         # Check if the group already exists
         if group_name in self.config["groups"]:
             raise GroupExists(group_name)
 
-        # Create the group
+        # Create the group adding the current user as owner and member
         self.config["groups"][group_name] = {
             "owner": current_user_id,
             "created": get_current_timestamp(),
             "moderators": [],
-            "members": {},
+            "members": {
+                current_user_id: {
+                    "permissions": "w",
+                    "key": group_key
+                }
+            },
             "files": {}
         }
 
         # Add the group to the user's own groups
         self.config["users"][current_user_id]["own_groups"].append(group_name)
+
+        # Add the group to the user's groups
+        self.config["users"][current_user_id]["groups"].append(group_name)
 
         return group_name  # group_id
 
@@ -378,8 +388,17 @@ class Operations:
         if not is_owner:
             raise PermissionDenied(f"User {current_user_id} is not the owner of group {group_id}.")
 
+        # Delete the group from file acl groups metadata
+        # INFO The file owner and respective shared users will still have file access
+        for owner_id in group["files"]:
+            for file_id in group[owner_id]:
+                self.config["users"][owner_id]["files"][file_id]["acl"]["groups"].remove(group_id)
+
         # Delete the group from the user's own groups
         self.config["users"][current_user_id]["own_groups"].remove(group_id)
+
+        # Delete the group from the user's groups
+        self.config["users"][current_user_id]["groups"].remove(group_id)
 
         # Delete the group from other user's groups
         users = self.config["users"]
@@ -396,15 +415,19 @@ class Operations:
         # Delete the group
         del self.config["groups"][group_id]
 
+    # INFO The group key is the master group key encrypted with the user to be added public key
+    # INFO If the user is already a member of the group, the key and permissions will be updated
     def add_user_to_group(self,
                           current_user_id: str,
                           group_id: str,
                           user_id: str,
-                          permissions: str) -> None:
+                          permissions: str,
+                          group_key: str) -> None:
 
         validate_params(user_ids=[current_user_id, user_id],
                         group_id=group_id,
-                        permissions=permissions)
+                        permissions=permissions,
+                        key=group_key)
         self.user_exists(current_user_id)
         self.user_exists(user_id)
         self.group_exists(group_id)
@@ -418,26 +441,34 @@ class Operations:
             raise PermissionDenied(f"User {current_user_id} is not the owner or "
                                    f"moderator of group {group_id}.")
 
-        # Check if the user is the owner of the group
+        # Check if the user being added is the owner
         if user_id == group["owner"]:
             raise PermissionDenied(f"User {user_id} is the owner of group {group_id}.")
 
-        # Check if the user is a moderator of the group
+        # Check if the user being added is a moderator
         if user_id in group["moderators"]:
-            raise PermissionDenied(f"Cannot add user {user_id} as a member of group {group_id}.\n"
-                                   f"User is already a moderator.")
+            raise PermissionDenied(f"User {user_id} is already a moderator of group {group_id}.")
 
         # Check if the user is already in the group
         if user_id in group["members"]:
+            # TODO replace this print to sent this message to the client
             print(f"User {user_id} is already in group {group_id}.\n"
                   f"Updating permissions to {permissions}.")
 
         # Add the user to the group with the given permissions
-        self.config["groups"][group_id]["members"][user_id] = permissions
+        self.config["groups"][group_id]["members"][user_id] = {
+            "permissions": permissions,
+            "key": group_key
+        }
 
         # Add the group to the user's groups
         self.config["users"][user_id]["groups"].append(group_id)
 
+    # INFO if the user is a moderator, he will also be removed from the moderators list
+    # INFO if the user being removed is the owner of any files in the group,
+    # the files will be deleted from the group but kept in that user's vault
+    # TODO before calling this function check if `config["groups"][group_id]["files"][user_id]`
+    # exists if so send a warning to the client saying that the files will be deleted
     def remove_user_from_group(self,
                                current_user_id: str,
                                group_id: str,
@@ -462,28 +493,26 @@ class Operations:
         if user_id == group["owner"]:
             raise PermissionDenied(f"User {user_id} is the owner of group {group_id}.")
 
-        # Check if the user is not a member of the group
-        if user_id not in group["members"]:
-            raise UserNotMemberOfGroup(user_id, group_id)
-
         # Only allow the owner to remove other moderators
         if is_moderator and user_id in group["moderators"]:
             raise PermissionDenied("Only the owner can remove moderators.")
 
-        # Remove the user from the group and the group from the user,
-        # based on whether the user removed is a moderator or not
+        # Check if the user is not a member of the group
+        if user_id not in group["members"]:
+            raise UserNotMemberOfGroup(user_id, group_id)
+
+        # Delete the user files from the group if any
+        if user_id in group["files"]:
+            del self.config["groups"][group_id]["files"][user_id]
+
+        # Remove the user from the group members and the user's groups
+        del self.config["groups"][group_id]["members"][user_id]
+        self.config["users"][user_id]["groups"].remove(group_id)
+
+        # Remove the user from the group moderators if he is one
         if user_id in group["moderators"]:
-            # Remove the user from the moderators list
-            group["moderators"].remove(user_id)
-
-            # Remove the group from the user's moderator groups
+            self.config["groups"][group_id]["moderators"].remove(user_id)
             self.config["users"][user_id]["moderator_groups"].remove(group_id)
-        else:
-            # Remove the user from the group
-            del self.config["groups"][group_id]["members"][user_id]
-
-            # Remove the group from the user's groups
-            self.config["users"][user_id]["groups"].remove(group_id)
 
     def change_user_group_permissions(self,
                                       current_user_id: str,
@@ -507,14 +536,20 @@ class Operations:
             raise PermissionDenied(f"User {current_user_id} is not the owner or "
                                    f"moderator of group {group_id}.")
 
+        # Check if the user with the new permissions is the owner
+        if user_id == group["owner"]:
+            raise PermissionDenied(f"User {user_id} is the owner of group {group_id}.")
+
+        # Check if the user with the new permissions is a moderator
+        if user_id in group["moderators"]:
+            raise PermissionDenied(f"User {user_id} is a moderator of group {group_id}.")
+
         # Check if the user is a member of the group
-        # INFO this check allows to change permissions for members only.
-        # The group owner or moderators are not allowed to have explicit permissions
         if user_id not in group["members"]:
             raise UserNotMemberOfGroup(user_id, group_id)
 
         # Change the user's permissions in the group
-        self.config["groups"][group_id]["members"][user_id] = permissions
+        self.config["groups"][group_id]["members"][user_id]["permissions"] = permissions
 
     def list_user_groups(self,
                          current_user_id: str) -> dict:
@@ -522,25 +557,12 @@ class Operations:
         validate_params(user_id=current_user_id)
         self.user_exists(current_user_id)
 
-        results = {
-            "own_groups": [],
-            "moderator_groups": [],
-            "member_groups": {}
-        }
+        results = {}
 
-        user_meta = self.config["users"][current_user_id]
-
-        # Save the user's own groups
-        results["own_groups"] = user_meta["own_groups"]
-
-        # Save the user's moderator groups
-        results["moderator_groups"] = user_meta["moderator_groups"]
-
-        # Save the user's member groups with the respective permissions
-        groups = self.config["groups"]
-        for group_id in user_meta["groups"]:
-            results["member_groups"][group_id] = {
-                "permissions": groups[group_id]["members"][current_user_id],
+        for group_id in self.config["users"][current_user_id]["groups"]:
+            group = self.config["groups"][group_id]
+            results[group_id] = {
+                "permissions": group["members"][current_user_id]["permissions"],
             }
 
         return results
@@ -549,54 +571,35 @@ class Operations:
                           current_user_id: str,
                           group_id: str,
                           file_name: str,
-                          file_contents: bytes) -> str:
+                          file_contents: bytes,
+                          group_key: str) -> str:
 
         validate_params(user_id=current_user_id,
                         group_id=group_id,
-                        file_name=file_name)
+                        file_name=file_name,
+                        key=group_key)
         self.user_exists(current_user_id)
         self.group_exists(group_id)
 
-        # Check if the user can write to the group
-        # (aka the owner, a moderator or a member with write permissions)
+        # Check if the user is a member with write permissions in the group
         group = self.config["groups"][group_id]
-        is_owner = current_user_id == group["owner"]
-        is_moderator = current_user_id in group["moderators"]
-        is_member_with_write_permissions = current_user_id in group["members"] and \
-            "w" in group["members"][current_user_id]
+        is_member = current_user_id in group["members"]
+        has_write_permissions = group["members"][current_user_id]["permissions"] == "w"
 
-        if not (is_owner or is_moderator or is_member_with_write_permissions):
+        if not (is_member and has_write_permissions):
             raise PermissionDenied(f"User {current_user_id} does not have permission "
                                    f"to write to group {group_id}.")
 
-        # Check if user already has a file with the same name
-        user_files = self.config["users"][current_user_id]["files"]
-        if file_name in user_files:
-            raise PermissionDenied(f"User {current_user_id} already has a file "
-                                   f"with the name {file_name}.")
+        # Add file to the user
+        self.add_file_to_user(current_user_id, file_name, file_contents, group_key)
 
-        # Write the file contents to the vault
+        # Add group to the file acl groups metadata
         file_id = f"{current_user_id}:{file_name}"
-        file_path = os.path.join(self.vault_path, file_id)
-        write_file(file_path, file_contents)
-
-        # Add file to the vault metadata
-        current_timestamp = get_current_timestamp()
-        self.config["users"][current_user_id]["files"][file_name] = {
-            "owner": current_user_id,
-            "created": current_timestamp,
-            "last_modified": current_timestamp,
-            "last_accessed": current_timestamp,
-            "acl": {
-                "users": {},
-                "groups": [group_id]
-            }
-        }
+        self.config["users"][current_user_id]["files"][file_name]["acl"]["groups"].append(group_id)
 
         # Add the file to the group
         if current_user_id not in self.config["groups"][group_id]["files"]:
             self.config["groups"][group_id]["files"][current_user_id] = []
-
         self.config["groups"][group_id]["files"][current_user_id].append(file_id)
 
         return file_id
@@ -613,10 +616,9 @@ class Operations:
         self.group_exists(group_id)
 
         # Extract the user and file name from the file ID
-        # INFO this assumes that usernames can't contain ':', but file names can
         user_id, _, file_name = file_id.partition(":")
 
-        # Check if the current user is the owner of the file or the owner of the group
+        # Check if the current user is the owner of the group or the file
         group = self.config["groups"][group_id]
         is_owner = current_user_id == group["owner"]
         is_file_owner = current_user_id == user_id
@@ -628,7 +630,7 @@ class Operations:
         # Check if the file exists in the user's files
         user_files = self.config["users"][user_id]["files"]
         if file_name not in user_files:
-            raise PermissionDenied(f"User {current_user_id} does not have a file "
+            raise PermissionDenied(f"User {user_id} does not have a file "
                                    f"with the name {file_name}.")
 
         # Check if the file exists in the group
@@ -636,20 +638,10 @@ class Operations:
         if user_id not in group_files or file_id not in group_files[user_id]:
             raise PermissionDenied(f"File {file_id} does not exist in group {group_id}.")
 
-        # Delete the file from the vault
-        file_path = os.path.join(self.vault_path, file_id)
-        try:
-            os.remove(file_path)
-        except Exception as e:
-            raise PermissionDenied(f"Failed to delete file from vault: {e}")
-
-        # Remove the file from the user's files
-        del self.config["users"][user_id]["files"][file_name]
-
-        # Remove the file from the group's files
-        self.config["groups"][group_id]["files"][user_id].remove(file_id)
-        if len(self.config["groups"][group_id]["files"][user_id]) == 0:
-            del self.config["groups"][group_id]["files"][user_id]
+        # TODO:
+        # Call delete_file function to delete the file from the user's vault
+        # This function should also remove the file from the group's files
+        # Also check if the 2 checks above are necessary
 
     ###
     # Group Moderator Operations
@@ -658,7 +650,8 @@ class Operations:
     def add_moderator_to_group(self,
                                current_user_id: str,
                                group_id: str,
-                               user_id: str) -> None:
+                               user_id: str,
+                               group_key: str) -> None:
 
         validate_params(user_ids=[current_user_id, user_id],
                         group_id=group_id)
@@ -676,27 +669,28 @@ class Operations:
         # Check if the user is already a moderator
         if user_id in group["moderators"]:
             # INFO We can throw an exception, print a message
-            # or just ignore this case by returning nothing.
-            print(f"User {user_id} was already a moderator of group {group_id}.")
+            # or just ignore this case by returning None.
+            print(f"User {user_id} is already a moderator of group {group_id}.")
             return
 
-        # Check if user was previously a member of the group
-        if user_id in group["members"]:
-            print(f"User {user_id} was a member of group {group_id}.\n"
-                  "Changing user from member to moderator.")
+        # Add the user as member with write permissions
+        self.config["groups"][group_id]["members"][user_id] = {
+            "permissions": "w",
+            "key": group_key
+        }
 
-            # Remove the user from the members list
-            del self.config["groups"][group_id]["members"][user_id]
-
-            # Remove the group from the user's groups
-            self.config["users"][user_id]["groups"].remove(group_id)
-
-            # Add the group to the user's moderator groups
-            self.config["users"][user_id]["moderator_groups"].append(group_id)
+        # Add the group to the user's groups
+        if group_id not in self.config["users"][user_id]["groups"]:
+            self.config["users"][user_id]["groups"].append(group_id)
 
         # Add the user to the moderators list
         self.config["groups"][group_id]["moderators"].append(user_id)
 
+        # Add the group to the user's moderator groups
+        self.config["users"][user_id]["moderator_groups"].append(group_id)
+
+    # NOTE calling this function only remove the user as a moderator and
+    # will leave the user in the group members list with previous write permissions
     def remove_moderator_from_group(self,
                                     current_user_id: str,
                                     group_id: str,
@@ -709,26 +703,18 @@ class Operations:
         self.group_exists(group_id)
 
         # Check if current user is the owner of the group
-        group = self.config["groups"][group_id]
-        is_owner = current_user_id == group["owner"]
-
-        if not is_owner:
+        if current_user_id != self.config["groups"][group_id]["owner"]:
             raise PermissionDenied("Only the group owner can remove moderators.")
 
         # Check if the user is a moderator of the group
-        if user_id not in group["moderators"]:
+        if user_id not in self.config["groups"][group_id]["moderators"]:
             raise UserNotModeratorOfGroup(user_id, group_id)
 
         # Remove the user from the moderators list
         self.config["groups"][group_id]["moderators"].remove(user_id)
 
-    def change_moderator_to_member(self,
-                                   current_user_id: str,
-                                   group_id: str,
-                                   user_id: str,
-                                   permissions: str) -> None:
-        self.remove_moderator_from_group(current_user_id, group_id, user_id)
-        self.add_user_to_group(current_user_id, group_id, user_id, permissions)
+        # Remove the group from the user's moderator groups
+        self.config["users"][user_id]["moderator_groups"].remove(group_id)
 
     ###
     # File Operations
@@ -767,7 +753,7 @@ class Operations:
 
             # Check if the user has read permissions
             permissions = self.config["users"][current_user_id]["shared_files"][file_owner_id][file_name]
-            if "r" not in permissions:
+            if "r" not in permissions:  # TODO "r" or "w"
                 raise PermissionDenied(f"User {current_user_id} does not have "
                                        "permission to read the file.")
 
