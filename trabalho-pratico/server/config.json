@@ -2,7 +2,9 @@
     "users": {
         "user1": {
             "created": "12/12/2025",
-            "groups": [],
+            "groups": [
+                "grupo1"
+            ],
             "own_groups": [
                 "grupo1"
             ],
