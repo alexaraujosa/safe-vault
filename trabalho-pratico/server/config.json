@@ -1,18 +1,15 @@
 {
     "users": {
-        "bloodygi": {
+        "user1": {
             "created": "12/12/2025",
-            "groups": [
-                "grupo1",
-                "grupo2"
-            ],
+            "groups": [],
             "own_groups": [
-                "grupoTop"
+                "grupo1"
             ],
             "moderator_groups": [],
             "files": {
                 "ficheiro1": {
-                    "owner": "bloodygi",
+                    "owner": "user1",
                     "_comment": "Owner of the file is not being used so it should be removed",
                     "size": "1024",
                     "created": "12/12/2025",
@@ -21,23 +18,23 @@
                     "key": "1111",
                     "acl": {
                         "users": {
-                            "migueltc13": "r",
-                            "darkenlm": "w"
+                            "user2": "r",
+                            "user3": "w"
                         },
                         "groups": [
-                            "grupoTop"
+                            "group1"
                         ]
                     }
                 }
             },
             "shared_files": {
-                "migueltc13": {
+                "user2": {
                     "notes.txt": {
                         "permissions": "w",
                         "key": "2222"
                     }
                 },
-                "darkenlm": {
+                "user3": {
                     "notes.txt": {
                         "permissions": "r",
                         "key": "3333"
@@ -47,17 +44,28 @@
         }
     },
     "groups": {
-        "grupoTop": {
-            "owner": "bloodygi",
+        "group1": {
+            "owner": "user1",
             "created": "12/12/2025",
             "moderators": [
-                "migueltc13"
+                "user2"
             ],
             "members": {
-                "darkenlm": "r"
+                "user1": {
+                    "permissions": "w",
+                    "key": "4444"
+                },
+                "user2": {
+                    "permissions": "w",
+                    "key": "5555"
+                },
+                "user3": {
+                    "permissions": "r",
+                    "key": "6666"
+                }
             },
             "files": {
-                "bloodygi": [
+                "user1": [
                     "ficheiro1"
                 ]
             }
