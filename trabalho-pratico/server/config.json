@@ -1,0 +1,66 @@
+{
+    "users": {
+        "bloodygi": {
+            "created": "12/12/2025",
+            "groups": [
+                "grupo1",
+                "grupo2"
+            ],
+            "own_groups": [
+                "grupoTop"
+            ],
+            "moderator_groups": [],
+            "files": {
+                "ficheiro1": {
+                    "owner": "bloodygi",
+                    "_comment": "Owner of the file is not being used so it should be removed",
+                    "size": "1024",
+                    "created": "12/12/2025",
+                    "last_modified": "12/12/2025",
+                    "last_accessed": "12/12/2025",
+                    "key": "1111",
+                    "acl": {
+                        "users": {
+                            "migueltc13": "r",
+                            "darkenlm": "w"
+                        },
+                        "groups": [
+                            "grupoTop"
+                        ]
+                    }
+                }
+            },
+            "shared_files": {
+                "migueltc13": {
+                    "notes.txt": {
+                        "permissions": "w",
+                        "key": "2222"
+                    }
+                },
+                "darkenlm": {
+                    "notes.txt": {
+                        "permissions": "r",
+                        "key": "3333"
+                    }
+                }
+            }
+        }
+    },
+    "groups": {
+        "grupoTop": {
+            "owner": "bloodygi",
+            "created": "12/12/2025",
+            "moderators": [
+                "migueltc13"
+            ],
+            "members": {
+                "darkenlm": "r"
+            },
+            "files": {
+                "bloodygi": [
+                    "ficheiro1"
+                ]
+            }
+        }
+    }
+}
