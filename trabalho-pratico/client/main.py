@@ -25,7 +25,7 @@ def setup_readline():
 
 def main():
     if len(sys.argv) != 3:
-        print("Usage: python3 -m client.main <PKCS12_FILE> <HOST:PORT>")
+        print("Usage: python3 -m client.main <CERT_FILE> <PKCS12_FILE> <HOST:PORT>")
         sys.exit(1)
 
     # TODO Start connection with server
