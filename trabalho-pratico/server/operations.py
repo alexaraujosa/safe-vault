@@ -31,8 +31,8 @@ from common.exceptions import (
 ###
 
 def get_current_timestamp() -> str:
-    "Get the current timestamp in ISO 8601 format."
-    return datetime.datetime.now().isoformat()
+    "Get the current timestamp in YYYY/MM/DD HH:MM:SS format."
+    return datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")
 
 
 def write_file(file_path: str, file_contents: bytes) -> None:
