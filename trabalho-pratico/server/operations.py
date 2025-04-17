@@ -130,11 +130,13 @@ class Operations:
                          current_user_id: str,
                          file_name: str,
                          file_contents: bytes,
-                         key: str) -> None:
+                         key: str,
+                         size: int) -> None:
 
         validate_params(user_id=current_user_id,
                         file_name=file_name,
-                        key=key)
+                        key=key,
+                        size=size)
         self.user_exists(current_user_id)
 
         # Check if the file already exists on user vault
@@ -151,7 +153,7 @@ class Operations:
         current_timestamp = get_current_timestamp()
         self.config["users"][current_user_id]["files"][file_name] = {
             "owner": current_user_id,
-            "size": len(file_contents),
+            "size": size,
             "created": current_timestamp,
             "last_modified": current_timestamp,
             "last_accessed": current_timestamp,
@@ -590,12 +592,14 @@ class Operations:
                           group_id: str,
                           file_name: str,
                           file_contents: bytes,
+                          size: int,
                           group_key: str) -> str:
 
         validate_params(user_id=current_user_id,
                         group_id=group_id,
                         file_name=file_name,
-                        key=group_key)
+                        key=group_key,
+                        size=size)
         self.user_exists(current_user_id)
         self.group_exists(group_id)
 
@@ -609,7 +613,7 @@ class Operations:
                                    f"to write to group {group_id}.")
 
         # Add file to the user
-        self.add_file_to_user(current_user_id, file_name, file_contents, group_key)
+        self.add_file_to_user(current_user_id, file_name, file_contents, group_key, size)
 
         # Add group to the file acl groups metadata
         file_id = f"{current_user_id}:{file_name}"
@@ -802,7 +806,8 @@ class Operations:
     def replace_file(self,
                      current_user_id: str,
                      file_id: str,
-                     file_contents: bytes) -> None:
+                     file_contents: bytes,
+                     size: int) -> None:
         validate_params(user_id=current_user_id,
                         file_id=file_id)
         self.user_exists(current_user_id)
@@ -837,6 +842,10 @@ class Operations:
         # Write the new file contents to the vault
         file_path = os.path.join(self.vault_path, file_id)
         write_file(file_path, file_contents)
+
+        # Update metadata
+        self.config["users"][file_owner_id]["files"][file_name]["size"] = size
+        self.config["users"][file_owner_id]["files"][file_name]["last_modified"] = get_current_timestamp()
 
     def file_details(self,
                      current_user_id: str,
