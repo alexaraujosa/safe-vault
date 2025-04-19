@@ -46,6 +46,10 @@ def is_valid_key(key: str) -> bool:
     """
     return isinstance(key, str) and len(key) > 0
 
+def is_valid_size(size: int) -> bool:
+    "Check if the given size is valid, i.e., greater than 0."
+    return isinstance(size, int) and size > 0
+
 
 def validate_params(**kwargs) -> None:
     """
@@ -59,6 +63,7 @@ def validate_params(**kwargs) -> None:
     - file_name:   str TODO: non alphanumeric allowed
     - permissions: str
     - key:         str
+    - size:        int
 
     Raises:
     - ValueError for the first validation error found.
@@ -88,5 +93,8 @@ def validate_params(**kwargs) -> None:
             case "key":
                 if not is_valid_key(value):
                     raise ValueError(f"Invalid key: '{value}'")
+            case "size":
+                if not is_valid_size(value):
+                    raise ValueError(f"Invalid size: '{value}'")
             case _:
                 raise InvalidParameter(key)
