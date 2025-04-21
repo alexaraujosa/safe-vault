@@ -8,6 +8,7 @@ To ensure data confidentiality, the entire packet is encrypted.
 
 Upon establishing a connection, the client shares a certificate which is validated by the server.
 This certificate allows the server to authenticate the client.  
+The server answers with a packet containing its public key, used to encrypt the client packets.  
 
 Each packet header includes the following fields:
 
