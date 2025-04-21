@@ -1,4 +1,5 @@
 from common.exceptions import InvalidParameter
+import os
 
 
 def is_valid_name(name: str) -> bool:
@@ -13,7 +14,7 @@ def is_valid_user_id(user_id: str) -> bool:
 
 def is_valid_file_name(file_name: str) -> bool:
     "Check if the given file name is valid, i.e., not empty."
-    return isinstance(file_name, str) and len(file_name) > 0
+    return isinstance(file_name, str) and len(file_name) > 0 and file_name.isalnum()
 
 
 def is_valid_file_id(file_id: str) -> bool:
@@ -50,6 +51,9 @@ def is_valid_size(size: int) -> bool:
     "Check if the given size is valid, i.e., greater than 0."
     return isinstance(size, int) and size > 0
 
+def is_valid_file_path(file_path: str) -> bool:
+    "Check if the given path is valid."
+    return os.path.exists(file_path)
 
 def validate_params(**kwargs) -> None:
     """
@@ -64,6 +68,7 @@ def validate_params(**kwargs) -> None:
     - permissions: str
     - key:         str
     - size:        int
+    - file_path:   string
 
     Raises:
     - ValueError for the first validation error found.
@@ -96,5 +101,8 @@ def validate_params(**kwargs) -> None:
             case "size":
                 if not is_valid_size(value):
                     raise ValueError(f"Invalid size: '{value}'")
+            case "file_path":
+                if not is_valid_file_path(value):
+                    raise ValueError(f"Invalid file path: '{value}'")
             case _:
                 raise InvalidParameter(key)
