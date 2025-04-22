@@ -7,14 +7,9 @@ def is_valid_name(name: str) -> bool:
     return isinstance(name, str) and len(name) > 0 and name.isalnum()
 
 
-def is_valid_user_id(user_id: str) -> bool:
-    "Check if the given user ID is valid name and does not contain any ':'."
-    return is_valid_name(user_id) and ':' not in user_id
-
-
 def is_valid_file_name(file_name: str) -> bool:
     "Check if the given file name is valid, i.e., not empty."
-    return isinstance(file_name, str) and len(file_name) > 0 and file_name.isalnum()
+    return isinstance(file_name, str) and len(file_name) > 0
 
 
 def is_valid_file_id(file_id: str) -> bool:
@@ -28,7 +23,7 @@ def is_valid_file_id(file_id: str) -> bool:
     partitioned_value = file_id.partition(":")
     if (
         partitioned_value[1] != ":"
-        or not is_valid_user_id(partitioned_value[0])
+        or not is_valid_name(partitioned_value[0])
         or not is_valid_file_name(partitioned_value[2])
     ):
         return False
@@ -47,13 +42,16 @@ def is_valid_key(key: str) -> bool:
     """
     return isinstance(key, str) and len(key) > 0
 
+
 def is_valid_size(size: int) -> bool:
     "Check if the given size is valid, i.e., greater than 0."
     return isinstance(size, int) and size > 0
 
+
 def is_valid_file_path(file_path: str) -> bool:
     "Check if the given path is valid."
     return os.path.exists(file_path)
+
 
 def validate_params(**kwargs) -> None:
     """
@@ -64,7 +62,7 @@ def validate_params(**kwargs) -> None:
     - user_id:     str
     - group_id:    str
     - file_id:     str
-    - file_name:   str TODO: non alphanumeric allowed
+    - file_name:   str
     - permissions: str
     - key:         str
     - size:        int
@@ -78,10 +76,10 @@ def validate_params(**kwargs) -> None:
         match key:
             case "user_ids":
                 for user in value:
-                    if not is_valid_user_id(user):
+                    if not is_valid_name(user):
                         raise ValueError(f"Invalid user ID: '{user}'")
             case "user_id":
-                if not is_valid_user_id(value):
+                if not is_valid_name(value):
                     raise ValueError(f"Invalid user ID: '{value}'")
             case "group_id":
                 if not is_valid_name(value):
