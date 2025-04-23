@@ -1,2 +1,6 @@
-client=${1:-1}
-python3 -m ssiproject.client.client --cert assets/projCA/VAULT_CA.crt assets/projCA/VAULT_CLI$client.p12
+#/bin/bash
+
+# DIR=${1:-"assets/projCA"}
+DIR=${1:-"test"}
+CLIENT=${2:-1}
+python3 -m ssiproject.client.client --cert $DIR/VAULT_CA.crt --keystore $DIR/VAULT_CLI$CLIENT.p12

@@ -1,84 +1,158 @@
+#!/usr/bin/env python3
+
 import os
+import sys
 import ssl
+import shlex
 import socket
 import argparse
+import readline
+import traceback
 from cryptography import x509
-from ssiproject.common.keystore import Keystore
-from ssiproject.common.packets.DiePacket import DiePacket
-from ssiproject.common.packets.HelloPacket import HelloPacket
-from ssiproject.common.packets.ResultPacket import ResultPacket
-from ssiproject.common.packets.BasePacket import BasePacket, PacketKind
 
-_IGNORE_SIG = "__IGNORE__"
+# TODO: Doesn't exist on branch "communication".
+# from client.command    import process_command
+# from common.validation import is_valid_file
+from ssiproject.common.keystore   import Keystore
 
-def handlePacket(s: ssl.SSLSocket):
-    pSigStatus = BasePacket.readSigBytesNoFail(s)
-    if (pSigStatus > 0): return None
+SERVER_ID = "VAULT_SERVER"
+HISTORY_FILE = ".client_history"
+HISTORY_SIZE = 100
 
-    phead = BasePacket.readHeaderNoSig(s)
-    # print("PACKET HEADER:", phead)
-    print(f"📩 Received: {phead['kind']}")
+def extractSubjectId(cert):
+    subject = cert.subject
 
-    match(phead["kind"]):
-        case PacketKind.HELLO:
-            print("Got hello from server.")
-            packet = DiePacket("You should KYS. NOW!")
-            return packet
-        case PacketKind.DIE:
-            packet = DiePacket.deserialize(phead, s)
-            print(f"Shutdown notice: {packet.msg}")
-            return None
-        case PacketKind.OP_RESULT:
-            packet = ResultPacket.deserialize(phead, s)
-            print(packet.resultType, packet.operationId)
-            print(packet.format())
-            return _IGNORE_SIG
-        case _:
-            print(f"Unsupported packet received: {phead['kind']}")
-            return None
+    for attr in subject:
+        if attr.oid == x509.NameOID.PSEUDONYM: return attr.value
+    return None
 
-if __name__ == "__main__":
+def setup_readline():
+    # Load command history
+    try:
+        readline.read_history_file(HISTORY_FILE)
+    except FileNotFoundError:
+        pass
+
+    # Set history length
+    readline.set_history_length(HISTORY_SIZE)
+
+    # Readline configuration
+    readline.parse_and_bind("tab: complete")
+    readline.parse_and_bind("set blink-matching-paren on")
+
+def main():
     parser = argparse.ArgumentParser("client")
     parser.add_argument("--cert", type=str, required=True, help="Path to the server's CA certificate")
     parser.add_argument("--port", type=int, required=False, default=8443, help="The port for the client to connect to")
-    parser.add_argument("keystore", type=str, help="Path to the client's keystore file")
+    parser.add_argument("--keystore", type=str, help="Path to the client's keystore file")
     args = parser.parse_args()
 
-    HOST = "127.0.0.1"
-    PORT = args.port
+    # Extract and validate arguments
+    ca_cert_file = args.cert
+    p12_file = args.keystore
+    port = args.port
+    try:
+        if not (0 < port < 65536):
+            raise ValueError
+    except ValueError:
+        print("❌ Invalid port number. Must be between 1 and 65535.")
+        sys.exit(1)
+    
+    for file in [ca_cert_file, p12_file]:
+        # if not is_valid_file(file):
+        if not os.path.exists(file):
+            print(f"❌ Invalid file: {file}.")
+            sys.exit(1)
 
-    cks = Keystore.load(args.keystore)
+    # SSL Context
+    try:
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        # Load .p12 file
+        cks = Keystore.load(p12_file)
+        # Load client certificate and private key
+        context.load_cert_chain(certfile=cks.getCertFile(), keyfile=cks.getKeyFile())
+        # Load trustable CA
+        context.load_verify_locations(cafile=ca_cert_file)
+        # Verify if the server certificate is signed by a trusted CA
+        context.verify_mode = ssl.CERT_REQUIRED
 
-    context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-    context.load_cert_chain(certfile=cks.getCertFile())
-    context.load_verify_locations(cafile=args.cert)
+        # There are two options to check if the peer connection is in fact the server or just a valid client certificate 
+        # One of them is by setting this option to True, which will order the ssl module to ensure that the
+        # certificate on the response's Subject's COMMON_NAME property equals the defined server hostname.
+        # The other method is by setting this option to False and allow the peer id extraction path to fail.
+        # Either should do the trick. If you prefer option one, you can also opt to keep the second, as a way to double 
+        # check the server certificate.
+        context.check_hostname = True
+    except Exception as e:
+        print(f"❌ Failed to set up SSL context.")
+        traceback.print_exc()
+        sys.exit(1)
 
-    # Connect to the server
-    with socket.create_connection((HOST, PORT)) as sock:
-        with context.wrap_socket(sock, server_hostname=HOST) as ssock:
-            print(f"✅ Connected securely to {HOST}:{PORT}")
-            # ssock.sendall(b"Hello from Client!")
-            # data = ssock.recv(1024)
-            # print(f"📩 Received: {data.decode()}")
+    # Connection
+    try:
+        with socket.create_connection(("127.0.0.1", port)) as sock:
+            with context.wrap_socket(sock, server_hostname="SSI Vault Server") as ssock:
+                print(f"✅ Connected securely to 127.0.0.1:{port}")
+                print(f"Socket Version: {ssock.version()}")
+                
+                peerCert = ssock.getpeercert(binary_form=True)
+                if peerCert:
+                    peerCertObj = x509.load_der_x509_certificate(peerCert)
+                    serverId = extractSubjectId(peerCertObj)
 
-            packet = HelloPacket().setOperationId(123)
-            bts = packet.serializeBytes()
-            print("BTS:", bts)
-            ssock.sendall(bts)
+                    if (serverId == None or serverId != SERVER_ID):
+                        print("❌ Invalid Server ID.")
+                        raise Exception
 
-            while ((ret := handlePacket(ssock)) != None):
-                if (ret == _IGNORE_SIG): continue
-                print("RET PACKET:", ret)
-                bts = ret.serializeBytes()
-                print("RET PACKET BYTES:", bts)
-                sendret = ssock.sendall(bts)
-                print("RET SEND RES:", sendret)
-                pass
+                    print(f"✅ Authenticated Server: {serverId}")
 
-            try:
-                ssock._check_connected()
-                ssock.shutdown(socket.SHUT_RDWR)
+                setup_readline()
+
+                doubleSIGINT = False
+                while True:
+                    command = ""
+                    try:
+                        command = input("> ").strip()
+                        if not command: continue
+                    except KeyboardInterrupt:
+                        if (not doubleSIGINT): 
+                            print("To exit, press CTRL + C again or type 'exit'.")
+                            doubleSIGINT = True
+                            continue
+                        else: 
+                            print()
+                            break
+                    except EOFError:
+                        break
+                    
+                    doubleSIGINT = False
+                    args = shlex.split(command)
+                    print(f"Arguments: {args}")
+
+                    if args[0] == "exit": break
+
+                    try:
+                        # TODO: Actually process packets to and from the server.
+                        # packet = process_command(args)
+                        ssock.send(bytes(command, "utf-8"))
+                        res = ssock.recv(1024)
+                        print(f"--> {res}")
+                    except Exception as e:
+                        print("❌ Error on packet serialization.")
+                        traceback.print_exc()
+                        continue
+
                 ssock.close()
-            except OSError:
-                pass
+    except ssl.SSLCertVerificationError:
+        print(f"❌ Peer is not a valid server.")
+    except Exception as e:
+        print(f"❌ Error on client socket.")
+        traceback.print_exc()
+        sys.exit(1)
 
+
+    print("\nExiting...")
+    readline.write_history_file(HISTORY_FILE)
+
+if __name__ == "__main__":
+    main()
