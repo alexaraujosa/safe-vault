@@ -13,7 +13,22 @@ class CommandType(Enum):
     SHARE_REQUEST   = 4,
     SHARE_RESPONSE  = 5,
     DELETE_REQUEST  = 6,
-    DELETE_RESPONSE = 7
+    DELETE_RESPONSE = 7,
+    REPLACE_REQUEST = 8,
+    REPLACE_RESPONSE = 9,
+    REVOKE_REQUEST = 10,
+    REVOKE_RESPONSE = 11,
+    READ_REQUEST = 12,
+    READ_RESPONSE = 13,
+    GROUP_CREATE_REQUEST = 14,
+    GROUP_DELETE_REQUEST = 15,
+    GROUP_ADD_USER_REQUEST = 16,
+    GROUP_DELETE_USER_REQUEST = 17,
+    GROUP_LIST_REQUEST = 18,
+    GROUP_ADD_REQUEST = 19,
+    EXIT_REQUEST = 20
+
+
 
 def create_packet(type: int, payload: dict) -> bytes:
     return BSON.encode({
