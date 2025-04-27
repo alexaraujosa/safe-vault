@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import os
 import sys
 import ssl
 import socket
@@ -11,18 +10,21 @@ from cryptography import x509
 
 from server.config     import Config
 from server.operations import Operations
+from common.keystore   import Keystore
 from common.validation import is_valid_file
-from common.keystore import Keystore
 
 CONFIG_PATH = "server/config.json"
 VAULT_PATH = "server/vault"
+
 
 def extractSubjectId(cert):
     subject = cert.subject
 
     for attr in subject:
-        if attr.oid == x509.NameOID.PSEUDONYM: return attr.value
+        if attr.oid == x509.NameOID.PSEUDONYM:
+            return attr.value
     return None
+
 
 def handleClient(conn: ssl.SSLSocket, addr):
     print(f"🔗 Connection from {addr} established with mutual authentication.")
@@ -35,7 +37,7 @@ def handleClient(conn: ssl.SSLSocket, addr):
             peerCertObj = x509.load_der_x509_certificate(peerCert)
             userId = extractSubjectId(peerCertObj)
 
-            if (userId == None):
+            if (userId is None):
                 print("❌ Invalid User ID.")
                 conn.close()
                 return
@@ -50,51 +52,46 @@ def handleClient(conn: ssl.SSLSocket, addr):
                 if message:
                     print(f"📩 Message from {addr}: {message}")
                     conn.send(message.encode("utf-8"))
-                else: break
+                else:
+                    break
             except ssl.SSLEOFError:
                 print(f"🚧 Client connection from {addr} died before server could close it.")
                 _died = True
                 break
-            except Exception as e:
+            except Exception:
                 print(f"❌ Error with connection from {addr}.")
                 traceback.print_exc()
                 break
-        
-        if (not _died): print(f"🔚 Closing connection from {addr}")
+
+        if (not _died):
+            print(f"🔚 Closing connection from {addr}")
         conn.close()
     except Exception:
         print(f"❌ Error on socket from {addr}.")
         traceback.print_exc()
 
+
 def main():
     parser = argparse.ArgumentParser("server")
-    parser.add_argument("--cert", type=str, required=True, help="Path to the server's CA certificate.")
-    parser.add_argument("--keystore", type=str, required=True, help="Path to the server's keystore file.")
-    parser.add_argument("--port", type=int, required=False, default=8443, help="The port for the server to listen to.")
-    parser.add_argument(
-        "--config", type=str, required=False, default=CONFIG_PATH, 
-        help="Path to the server's config file."
-    )
-    parser.add_argument(
-        "--vault", type=str, required=False, default=VAULT_PATH, 
-        help="Path to the server's vault directory."
-    )
+    parser.add_argument("--cert",     type=str, required=True,                       help="Path to server's CA certificate.")
+    parser.add_argument("--keystore", type=str, required=True,                       help="Path to server's keystore file.")
+    parser.add_argument("--port",     type=int, required=False, default=8443,        help="Port to server listen on.")
+    parser.add_argument("--config",   type=str, required=False, default=CONFIG_PATH, help="Path to server's config file.")
+    parser.add_argument("--vault",    type=str, required=False, default=VAULT_PATH,  help="Path to server's vault directory.")
     args = parser.parse_args()
 
     ca_cert_file = args.cert
     p12_file = args.keystore
     port = args.port
-    try:
-        if not (0 < port < 65536): raise ValueError
-    except ValueError:
+    if not (1 <= port <= 65535):
         print("❌ Invalid port number. Must be between 1 and 65535.")
         sys.exit(1)
-    
+
     for file in [ca_cert_file, p12_file]:
         if not is_valid_file(file):
             print(f"❌ Invalid file: {file}.")
             sys.exit(1)
-        
+
     # SSL Context
     try:
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
@@ -109,8 +106,8 @@ def main():
 
         # !!!!! DEBUG ONLY - Dump keylog file !!!!!
         # context.keylog_filename = "VAULT_SERVER_KL.log"
-    except Exception as e:
-        print(f"❌ Failed to set up SSL context.")
+    except Exception:
+        print("❌ Failed to set up SSL context.")
         traceback.print_exc()
         sys.exit(1)
 
@@ -120,8 +117,8 @@ def main():
 
         # Initalize server operations class
         operations = Operations(config.config, VAULT_PATH)
-    except Exception as e:
-        print(f"Failed to set up server configuration and operations.")
+    except Exception:
+        print("Failed to set up server configuration and operations.")
         traceback.print_exc()
 
     # Connection
@@ -146,16 +143,16 @@ def main():
                     except KeyboardInterrupt:
                         # Server is closing. Don't panic.
                         break
-    except Exception as e:
-        print(f"❌ Error on server socket.")
+    except Exception:
+        print("❌ Error on server socket.")
         traceback.print_exc()
         sys.exit(1)
 
     # Save the config file
     try:
         config.save(config=operations.config)
-    except Exception as e:
-        print(f"Failed to save server config.")
+    except Exception:
+        print("Failed to save server config.")
         traceback.print_exc()
         sys.exit(1)
 
