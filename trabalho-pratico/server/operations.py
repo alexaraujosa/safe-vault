@@ -390,7 +390,7 @@ class Operations:
         # Add the group to the user's groups
         self.config["users"][current_user_id]["groups"].append(group_name)
 
-        return group_name  # group_id
+        return group_name  # group_id TODO caller must include message in SUCCESS packet
 
     def delete_group(self,
                      current_user_id: str,
