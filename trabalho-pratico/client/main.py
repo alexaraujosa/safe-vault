@@ -15,7 +15,6 @@ from common.validation import is_valid_file
 from common.keystore   import Keystore
 
 SERVER_ID = "VAULT_SERVER"
-HISTORY_FILE = ".client_history"
 HISTORY_SIZE = 100
 
 def extractSubjectId(cert):
@@ -26,16 +25,8 @@ def extractSubjectId(cert):
     return None
 
 def setup_readline():
-    # Load command history
-    try:
-        readline.read_history_file(HISTORY_FILE)
-    except FileNotFoundError:
-        pass
-
-    # Set history length
     readline.set_history_length(HISTORY_SIZE)
-
-    # Readline configuration
+    readline.set_auto_history(False)
     readline.parse_and_bind("tab: complete")
     readline.parse_and_bind("set blink-matching-paren on")
 
@@ -112,6 +103,7 @@ def main():
                     try:
                         command = input("> ").strip()
                         if not command: continue
+                        readline.add_history(command)
                     except KeyboardInterrupt:
                         if (not doubleSIGINT): 
                             print("To exit, press CTRL + C again or type 'exit'.")
@@ -148,9 +140,7 @@ def main():
         traceback.print_exc()
         sys.exit(1)
 
-
     print("\nExiting...")
-    readline.write_history_file(HISTORY_FILE)
 
 if __name__ == "__main__":
     main()
