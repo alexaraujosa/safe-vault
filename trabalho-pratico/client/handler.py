@@ -3,8 +3,13 @@ from common.validation import validate_params
 from common.packet import (
     CommandType,
     create_packet,
-    # decode_packet
+    decode_packet
 )
+
+
+def handle_boolean_response(response: dict) -> None:
+    if response.get("type") == CommandType.ERROR.value:
+        print(response.get("message"))
 
 
 def process_command(client_socket, server_socket, args: list) -> None:
@@ -106,7 +111,15 @@ def process_command(client_socket, server_socket, args: list) -> None:
                         raise ValueError(f"Invalid arguments.\nUsage: {usage._group_create}")
                     validate_params(group_id=(group_id := args[2]))
 
-                    # TODO Create group (server can return failure if it already exists)
+                    # Send group creation request to server
+                    packet = create_packet(CommandType.GROUP_CREATE_REQUEST.value,
+                                           {"group_id": group_id})
+                    server_socket.send(packet)
+
+                    # Await server boolean response
+                    response = decode_packet(server_socket.recv(1024))
+                    handle_boolean_response(response)
+
                 case "delete":
                     if len(args) != 3:
                         raise ValueError(f"Invalid arguments.\nUsage: {usage._group_delete}")
