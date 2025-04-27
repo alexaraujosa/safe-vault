@@ -9,9 +9,10 @@ import readline
 import traceback
 from cryptography import x509
 
-from client.handler    import process_command
-from common.validation import is_valid_file
 from common.keystore   import Keystore
+from common.validation import is_valid_file
+from client.encryption import RSA
+from client.handler    import process_command
 
 SERVER_ID = "VAULT_SERVER"
 HISTORY_SIZE = 100
@@ -35,9 +36,9 @@ def setup_readline():
 
 def main():
     parser = argparse.ArgumentParser("client")
-    parser.add_argument("--cert", type=str, required=True, help="Path to the server's CA certificate")
-    parser.add_argument("--port", type=int, required=False, default=8443, help="The port for the client to connect to")
-    parser.add_argument("--keystore", type=str, help="Path to the client's keystore file")
+    parser.add_argument("--cert",     type=str, required=True,                help="Path to the server's CA certificate")
+    parser.add_argument("--keystore", type=str, required=True,                help="Path to the client's keystore file")
+    parser.add_argument("--port",     type=int, required=False, default=8443, help="The port for the client to connect to")
     args = parser.parse_args()
 
     # Extract and validate arguments
@@ -53,6 +54,13 @@ def main():
         if not is_valid_file(file):
             print(f"❌ Invalid file: {file}.")
             sys.exit(1)
+
+    # Extract private key and public key from PKCS#12 file
+    try:
+        client_public_key, client_private_key = RSA.load_keys_from_p12(p12_file)
+    except Exception as e:
+        print(f"❌ Failed to load PKCS#12 file: {e}")
+        sys.exit(1)
 
     # SSL Context
     try:
@@ -110,9 +118,8 @@ def main():
                             print("To exit, press CTRL + C again or type 'exit'.")
                             doubleSIGINT = True
                             continue
-                        else:
-                            print()
-                            break
+                        print()
+                        break
                     except EOFError:
                         break
 
@@ -124,7 +131,8 @@ def main():
                         break
 
                     try:
-                        process_command(sock, ssock, args)
+                        process_command(sock, ssock, args,
+                                        client_private_key, client_public_key)
                     except ValueError as e:
                         print(e)
                     except ssl.SSLError:
@@ -138,12 +146,15 @@ def main():
                 ssock.close()
     except ssl.SSLCertVerificationError:
         print("❌ Peer is not a valid server.")
+    except ConnectionRefusedError:
+        print(f"❌ Connection refused. Is the server running on port {port}?")
+        sys.exit(1)
+    except PermissionError:
+        print("❌ Permission denied.")
+        sys.exit(1)
     except Exception:
-        print("❌ Error on client socket.")
         traceback.print_exc()
         sys.exit(1)
-
-    print("\nExiting...")
 
 
 if __name__ == "__main__":
