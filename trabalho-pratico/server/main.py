@@ -8,21 +8,21 @@ import traceback
 import threading
 from cryptography import x509
 
+from common.keystore   import Keystore
+from common.validation import is_valid_file
 from server.config     import Config
 from server.operations import Operations
 from server.handler    import process_request
-from common.keystore   import Keystore
-from common.validation import is_valid_file
 
 CONFIG_PATH = "server/config.json"
 VAULT_PATH = "server/vault"
 
 
-def extractSubjectId(cert):
+def extract_user_id(cert):
     subject = cert.subject
 
     for attr in subject:
-        if attr.oid == x509.NameOID.PSEUDONYM:
+        if attr.oid == x509.NameOID.COMMON_NAME:
             return attr.value
     return None
 
@@ -36,24 +36,24 @@ def handleClient(operations, conn: ssl.SSLSocket, addr):
         peerCert = conn.getpeercert(binary_form=True)
         if peerCert:
             peerCertObj = x509.load_der_x509_certificate(peerCert)
-            user_id = extractSubjectId(peerCertObj)
-
+            # Extract common name
+            user_id = extract_user_id(peerCertObj)
             if (not user_id):
-                print("❌ Cannot extract user id from certificate.")
+                print("❌ Cannot extract user ID from certificate.")
                 conn.close()
                 return
 
-            print(f"✅ Authenticated user: {user_id}")
+            print(f"✅ Authenticated User: {user_id}")
 
         _died = False
         while True:
             try:
-                # TODO: Currently echoing messages back to the client. Process packets here.
                 packet_data = conn.recv()
                 if not packet_data:
                     break
 
                 print(f"📦 Received packet from {addr}")
+
                 # TODO lock other threads from accessing the operations object
                 process_request(operations, user_id, conn, packet_data)
             except ssl.SSLEOFError:
@@ -74,6 +74,7 @@ def handleClient(operations, conn: ssl.SSLSocket, addr):
 
 
 def main():
+    # Command line arguments
     parser = argparse.ArgumentParser("server")
     parser.add_argument("--cert",     type=str, required=True,                       help="Path to server's CA certificate.")
     parser.add_argument("--keystore", type=str, required=True,                       help="Path to server's keystore file.")
@@ -85,6 +86,7 @@ def main():
     ca_cert_file = args.cert
     p12_file = args.keystore
     port = args.port
+
     if not (1 <= port <= 65535):
         print("❌ Invalid port number. Must be between 1 and 65535.")
         sys.exit(1)
@@ -115,12 +117,12 @@ def main():
 
     try:
         # Load the JSON config file
-        config = Config(CONFIG_PATH)
+        config = Config(args.config)
 
         # Initalize server operations class
-        operations = Operations(config.config, VAULT_PATH)
+        operations = Operations(config.config, args.vault)
     except Exception:
-        print("Failed to set up server configuration and operations.")
+        print("Failed to set up server configuration.")
         traceback.print_exc()
 
     # Connection
@@ -145,17 +147,24 @@ def main():
                     except KeyboardInterrupt:
                         # Server is closing. Don't panic.
                         break
+    except PermissionError:
+        print("❌ Permission denied.")
+        sys.exit(1)
+    except OSError as e:
+        if e.errno == 98:
+            print(f"❌ Port {port} already in use.")
+        else:
+            print(f"❌ Failed to bind socket: {e}")
+        sys.exit(1)
     except Exception:
-        print("❌ Error on server socket.")
         traceback.print_exc()
         sys.exit(1)
 
     # Save the config file
     try:
         config.save(config=operations.config)
-    except Exception:
-        print("Failed to save server config.")
-        traceback.print_exc()
+    except Exception as e:
+        print(f"Failed to save server config: {e}")
         sys.exit(1)
 
 
