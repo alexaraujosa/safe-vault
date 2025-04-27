@@ -13,7 +13,7 @@ from cryptography import x509
 # TODO: Doesn't exist on branch "communication".
 # from client.command    import process_command
 # from common.validation import is_valid_file
-from ssiproject.common.keystore   import Keystore
+from common.keystore   import Keystore
 
 SERVER_ID = "VAULT_SERVER"
 HISTORY_FILE = ".client_history"

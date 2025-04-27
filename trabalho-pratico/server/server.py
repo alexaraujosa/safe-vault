@@ -13,7 +13,7 @@ from cryptography import x509
 # from server.config     import Config
 # from server.operations import Operations
 # from common.validation import is_valid_file
-from ssiproject.common.keystore import Keystore
+from common.keystore import Keystore
 
 CONFIG_PATH = "server/config.json"
 VAULT_PATH = "server/vault"
