@@ -12,6 +12,7 @@ from common.packet import (
 def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLSocket, packet_data: bytes):
     try:
         packet = decode_packet(packet_data)
+        payload = packet.get("payload")
         match packet.get("type"):
             case CommandType.ADD_REQUEST.value:
                 # TODO add
@@ -39,8 +40,8 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 pass
             case CommandType.GROUP_CREATE_REQUEST.value:
                 try:
-                    group_name = packet.get("name")
-                    group_key  = packet.get("key")
+                    group_name = payload.get("name")
+                    group_key  = payload.get("key")
                     group_id = operations.create_group(current_user_id, group_name, group_key)
                     response = create_success_packet(group_id)
                 except Exception as e:
