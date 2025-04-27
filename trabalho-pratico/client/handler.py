@@ -114,6 +114,9 @@ def process_command(client_socket, server_socket, args: list) -> None:
 
             # TODO read
         case "group":
+            if len(args) < 2:
+                raise ValueError(f"Invalid arguments.\nUsage: {usage._group}")
+
             group_command = args[1]
             match group_command:
                 case "create":
@@ -121,13 +124,18 @@ def process_command(client_socket, server_socket, args: list) -> None:
                         raise ValueError(f"Invalid arguments.\nUsage: {usage._group_create}")
                     validate_params(group_id=(group_id := args[2]))
 
+                    # TODO create master group key AES
+                    # TODO request current user public key from server
+                    # TODO encrypt master group key with current user public key
+
                     # Send group creation request to server
                     packet = create_packet(CommandType.GROUP_CREATE_REQUEST.value,
-                                           {"group_id": group_id})
+                                           {"name": group_id,
+                                            "key": b"TODO"})  # TODO encrypted_group_key
                     server_socket.send(packet)
 
                     # Await server boolean response
-                    response = decode_packet(server_socket.recv(1024))  # TODO DEFINE MAX SIZE
+                    response = decode_packet(server_socket.recv())
                     handle_boolean_response(response)
 
                 case "delete":
@@ -141,7 +149,7 @@ def process_command(client_socket, server_socket, args: list) -> None:
                     server_socket.send(packet)
 
                     # Await server boolean response
-                    response = decode_packet(server_socket.recv(1024))  # TODO DEFINE MAX SIZE
+                    response = decode_packet(server_socket.recv())
                     handle_boolean_response(response)
 
                 case "add-user":
@@ -174,7 +182,7 @@ def process_command(client_socket, server_socket, args: list) -> None:
                     server_socket.send(packet)
 
                     # Await server response (CONFIRM_REQUEST | SUCCESS | ERROR)
-                    response = decode_packet(server_socket.recv(1024))
+                    response = decode_packet(server_socket.recv())
                     if response.get("type") == CommandType.CONFIRM_REQUEST.value:
                         print(response.get("payload").get("message"))
                         confirm = input("Do you want to continue? [y/N] ")
@@ -201,7 +209,7 @@ def process_command(client_socket, server_socket, args: list) -> None:
                     # Await server response (group_list | ERROR)
                     # TODO Server: add the group_list to the payload.message field
                     # this way no if statement is needed here
-                    response = decode_packet(server_socket.recv(1024))
+                    response = decode_packet(server_socket.recv())
                     print(response.get("payload").get("message"))
 
                 case "add":
