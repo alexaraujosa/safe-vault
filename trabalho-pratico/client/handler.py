@@ -50,23 +50,23 @@ def process_command(client_socket, server_socket, args: list) -> None:
             # TODO Encrypt content
 
             # TODO Create, encrypt and send packet
-        # TODO 2 matches for list command maybe (clean)
-        case "list":
-            packet = None
-            if len(args) == 1:
-                packet = create_packet(CommandType.LIST_REQUEST.value, {})
-            elif len(args) == 3:
-                match args[1]:
-                    case "-u":
-                        packet = create_packet(CommandType.LIST_REQUEST.value,
-                                               {"user_id": args[2]})
-                    case "-g":
-                        packet = create_packet(CommandType.LIST_REQUEST.value,
-                                               {"group_id": args[2]})
-                    case _:
-                        raise ValueError(f"Invalid flag.\nUsage: {usage._list}")
-            else:
-                raise ValueError(f"Invalid arguments.\nUsage: {usage._list}")
+        case "list", *rest:
+            match rest:
+                case []:  # list
+                    packet = create_packet(CommandType.LIST_REQUEST.value, {})
+
+                case ["-u", user_id]:  # list -u <user_id>
+                    validate_params(user_id=user_id)
+                    packet = create_packet(CommandType.LIST_REQUEST.value,
+                                           {"user_id": user_id})
+
+                case ["-g", group_id]:  # list -g <group_id>
+                    validate_params(group_id=group_id)
+                    packet = create_packet(CommandType.LIST_REQUEST.value,
+                                           {"group_id": group_id})
+
+                case _:
+                    raise ValueError(f"Invalid arguments.\nUsage: {usage._list}")
 
             # TODO Encrypt and send packet
             print(packet)
