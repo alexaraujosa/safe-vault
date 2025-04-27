@@ -24,6 +24,8 @@ class Keystore:
                     print("Invalid keystore.")
                     exit(1)
 
+                # TODO do not save the key in /tmp directory
+                # create a temporary dir with 700 permissions in the current directory instead
                 tmpKeyFile = NamedTemporaryFile(delete=False, suffix=".key")
                 tmpKeyFile.write(pkey.private_bytes(Encoding.PEM, PrivateFormat.PKCS8, NoEncryption()))
                 tmpKeyFile.flush()
