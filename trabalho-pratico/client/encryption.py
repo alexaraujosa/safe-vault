@@ -10,6 +10,11 @@ from cryptography.hazmat.primitives.serialization import pkcs12
 
 class AES_GCM:
     @staticmethod
+    def generate_key() -> bytes:
+        """Generate a random 256-bit key for AES-GCM"""
+        return os.urandom(32)
+
+    @staticmethod
     def encrypt(data: bytes, key: bytes) -> dict:
         """Encrypt data with AES-GCM (256-bit key)"""
         iv = os.urandom(12)  # 96-bit IV for GCM
@@ -84,7 +89,7 @@ class RSA:
 
 if __name__ == "__main__":
     # AES-GCM example
-    aes_key = os.urandom(32)  # 256-bit key
+    aes_key = AES_GCM.generate_key()
     data = b"Hello, AES-GCM!"
     encrypted_data = AES_GCM.encrypt(data, aes_key)
     decrypted_data = AES_GCM.decrypt(
