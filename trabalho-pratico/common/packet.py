@@ -4,30 +4,33 @@ from typing import Any
 
 PACKET_VERSION = 1
 
-# TODO add replace, details, revoke, read, etc
-class CommandType(Enum):
-    ADD_REQUEST     = 0,
-    ADD_RESPONSE    = 1,
-    LIST_REQUEST    = 2,
-    LIST_RESPONSE   = 3,
-    SHARE_REQUEST   = 4,
-    SHARE_RESPONSE  = 5,
-    DELETE_REQUEST  = 6,
-    DELETE_RESPONSE = 7,
-    REPLACE_REQUEST = 8,
-    REPLACE_RESPONSE = 9,
-    REVOKE_REQUEST = 10,
-    REVOKE_RESPONSE = 11,
-    READ_REQUEST = 12,
-    READ_RESPONSE = 13,
-    GROUP_CREATE_REQUEST = 14,
-    GROUP_DELETE_REQUEST = 15,
-    GROUP_ADD_USER_REQUEST = 16,
-    GROUP_DELETE_USER_REQUEST = 17,
-    GROUP_LIST_REQUEST = 18,
-    GROUP_ADD_REQUEST = 19,
-    EXIT_REQUEST = 20
 
+# TODO add replace, details, revoke, read, etc
+# TODO remove some unessary responses
+class CommandType(Enum):
+    SUCCESS                   = 0,
+    ERROR                     = 1,
+    ADD_REQUEST               = 2,
+    ADD_RESPONSE              = 3,
+    LIST_REQUEST              = 4,
+    LIST_RESPONSE             = 5,
+    SHARE_REQUEST             = 6,
+    SHARE_RESPONSE            = 7,
+    DELETE_REQUEST            = 8,
+    DELETE_RESPONSE           = 9,
+    REPLACE_REQUEST           = 10,
+    REPLACE_RESPONSE          = 11,
+    REVOKE_REQUEST            = 12,
+    REVOKE_RESPONSE           = 13,
+    READ_REQUEST              = 14,
+    READ_RESPONSE             = 15,
+    GROUP_CREATE_REQUEST      = 16,
+    GROUP_DELETE_REQUEST      = 17,
+    GROUP_ADD_USER_REQUEST    = 18,
+    GROUP_DELETE_USER_REQUEST = 19,
+    GROUP_LIST_REQUEST        = 20,
+    GROUP_ADD_REQUEST         = 21,
+    EXIT_REQUEST              = 22
 
 
 def create_packet(type: int, payload: dict) -> bytes:
@@ -36,6 +39,11 @@ def create_packet(type: int, payload: dict) -> bytes:
         "type": type,
         "payload": payload
     })
+
+
+def create_error_packet(error: str) -> bytes:
+    return create_packet(CommandType.ERROR.value, {"error": error})
+
 
 def decode_packet(packet: bytes) -> dict[str, Any]:
     dPacket = BSON.decode(packet)
@@ -48,11 +56,11 @@ def decode_packet(packet: bytes) -> dict[str, Any]:
     # Verify packet version
     if dPacket.get("version") != PACKET_VERSION:
         raise ValueError(f"Invalid packet version. Expected '{PACKET_VERSION}', got '{dPacket.get("version")}'.")
-    
+
     # Verify command type
     try:
         CommandType(dPacket.get("type"))
     except ValueError:
         raise ValueError(f"Invalid packet command type. Got: {dPacket.get("type")}")
-    
+
     return dPacket
