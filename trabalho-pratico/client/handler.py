@@ -1,33 +1,10 @@
 import client.usage as usage
 from common.validation import validate_params
-
-from bson import BSON
-from enum import Enum
-
-# TODO move this variable to common
-PACKET_VERSION = 1
-
-
-# TODO move this class to common
-# TODO add replace, details, revoke, read, etc
-class CommandType(Enum):
-    ADD_REQUEST     = 0,
-    ADD_RESPONSE    = 1,
-    LIST_REQUEST    = 2,
-    LIST_RESPONSE   = 3,
-    SHARE_REQUEST   = 4,
-    SHARE_RESPONSE  = 5,
-    DELETE_REQUEST  = 6,
-    DELETE_RESPONSE = 7
-
-
-# TODO move this function to common
-def create_packet(type: int, payload: dict) -> bytes:
-    return BSON.encode({
-        "version": PACKET_VERSION,
-        "type": type,
-        "payload": payload
-    })
+from common.packet import (
+    CommandType,
+    create_packet,
+    # decode_packet
+)
 
 
 def process_command(client_socket, server_socket, args: list) -> None:
