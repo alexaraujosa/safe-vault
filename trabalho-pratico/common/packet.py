@@ -35,7 +35,6 @@ class CommandType(Enum):
     # DETAILS_RESPONSE          = 24
 
 
-# TODO encrypt packet with public key
 def create_packet(p_type: int, payload: dict) -> bytes:
     return BSON.encode({
         "version": PACKET_VERSION,
@@ -52,7 +51,6 @@ def create_success_packet(message: str) -> bytes:
     return create_packet(CommandType.SUCCESS.value, {"message": message})
 
 
-# TODO decrypt packet with private key
 def decode_packet(packet_data: bytes) -> dict:
     packet = BSON.decode(packet_data)
 
