@@ -1,0 +1,75 @@
+{
+    "users": {
+        "user1": {
+            "created": "12/12/2025",
+            "groups": [
+                "grupo1"
+            ],
+            "own_groups": [
+                "grupo1"
+            ],
+            "moderator_groups": [],
+            "files": {
+                "ficheiro1": {
+                    "owner": "user1",
+                    "size": "1024",
+                    "created": "12/12/2025",
+                    "last_modified": "12/12/2025",
+                    "last_accessed": "12/12/2025",
+                    "key": "1111",
+                    "acl": {
+                        "users": {
+                            "user2": "r",
+                            "user3": "w"
+                        },
+                        "groups": [
+                            "group1"
+                        ]
+                    }
+                }
+            },
+            "shared_files": {
+                "user2": {
+                    "notes.txt": {
+                        "permissions": "w",
+                        "key": "2222"
+                    }
+                },
+                "user3": {
+                    "notes.txt": {
+                        "permissions": "r",
+                        "key": "3333"
+                    }
+                }
+            }
+        }
+    },
+    "groups": {
+        "group1": {
+            "owner": "user1",
+            "created": "12/12/2025",
+            "moderators": [
+                "user2"
+            ],
+            "members": {
+                "user1": {
+                    "permissions": "w",
+                    "key": "4444"
+                },
+                "user2": {
+                    "permissions": "w",
+                    "key": "5555"
+                },
+                "user3": {
+                    "permissions": "r",
+                    "key": "6666"
+                }
+            },
+            "files": {
+                "user1": [
+                    "ficheiro1"
+                ]
+            }
+        }
+    }
+}
