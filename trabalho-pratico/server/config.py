@@ -32,9 +32,13 @@ class Config:
 
     def load(self):
         # Load the configuration from the file
-        print(f"Loading config from {self.config_path}")
         with open(self.config_path, 'r', encoding='utf-8') as f:
             self.config = json.load(f)
+
+        n_users  = len(self.config.get('users', []))
+        n_groups = len(self.config.get('groups', []))
+        print(f"Loaded {n_users} user{'s' if n_users > 1 else ''} and "
+              f"{n_groups} group{'s' if n_groups > 1 else ''} from {self.config_path}")
 
     def __str__(self):
         return json.dumps(self.config, ensure_ascii=False, indent=4)
