@@ -151,7 +151,7 @@ def process_command(client_socket, server_socket, args: list) -> None:
                                     user_id=(user_id := args[3]),
                                     permissions=(permissions := args[4]))
 
-                    # TODO Request master group and user public keys from server
+                    # TODO Request master group and user public keys from server (server can deny)
                     # TODO Decrypt the user public key with the current user private key
                     # TODO Encrypt the master group public key with the user public key
                     # TODO Send the encrypted master group public key to the server
@@ -167,12 +167,43 @@ def process_command(client_socket, server_socket, args: list) -> None:
                     validate_params(group_id=(group_id := args[2]),
                                     user_id=(user_id := args[3]))
 
-                    # TODO delete user
+                    # Send user group deletion request to server
+                    packet = create_packet(CommandType.GROUP_DELETE_USER_REQUEST.value,
+                                           {"group_id": group_id,
+                                            "user_id": user_id})
+                    server_socket.send(packet)
+
+                    # Await server response (CONFIRM_REQUEST | SUCCESS | ERROR)
+                    response = decode_packet(server_socket.recv(1024))
+                    if response.get("type") == CommandType.CONFIRM_REQUEST.value:
+                        print(response.get("payload").get("message"))
+                        confirm = input("Do you want to continue? [y/N] ")
+                        if confirm.lower() == "y":
+                            packet = create_packet(CommandType.GROUP_DELETE_USER_REQUEST.value,
+                                                   {"group_id": group_id,
+                                                    "user_id": user_id,
+                                                    "confirm": True})
+                            server_socket.send(packet)
+                        else:
+                            print("Operation cancelled.")
+
+                    handle_boolean_response(response)
+
                 case "list":
                     if len(args) != 2:
                         raise ValueError(f"Invalid arguments.\nUsage: {usage._group_list}")
 
-                    # TODO list groups
+                    # Send group list request to server
+                    packet = create_packet(CommandType.GROUP_LIST_REQUEST.value,
+                                           {"group_id": group_id})
+                    server_socket.send(packet)
+
+                    # Await server response (group_list | ERROR)
+                    # TODO Server: add the group_list to the payload.message field
+                    # this way no if statement is needed here
+                    response = decode_packet(server_socket.recv(1024))
+                    print(response.get("payload").get("message"))
+
                 case "add":
                     if len(args) != 4:
                         raise ValueError(f"Invalid arguments.\nUsage: {usage._group_add}")
@@ -183,9 +214,10 @@ def process_command(client_socket, server_socket, args: list) -> None:
                     with open(file_path, "rb") as file:
                         content = file.read()
 
-                    # TODO Retrieve filename from the file_path (use basename)
-
-                    # TODO Encrypt content
+                    # TODO Retrieve file_:name from the file_path (use basename)
+                    # TODO Ask server for group public key (server can deny, e.g. permissions, group not found)
+                    # TODO Encrypt content with group public key
+                    # TODO Send add file to group request to server (check for server response)
                 case _:
                     raise ValueError(f"Invalid command: group '{group_command}'\n"
                                      f"{usage._group}")
