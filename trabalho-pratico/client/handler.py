@@ -1,10 +1,15 @@
+import client.usage as usage
 from common.validation import validate_params
+
 from bson import BSON
 from enum import Enum
 
+# TODO move this variable to common
 PACKET_VERSION = 1
 
 
+# TODO move this class to common
+# TODO add replace, details, revoke, read, etc
 class CommandType(Enum):
     ADD_REQUEST     = 0,
     ADD_RESPONSE    = 1,
@@ -16,43 +21,7 @@ class CommandType(Enum):
     DELETE_RESPONSE = 7
 
 
-def group_commands_usage():  # TODO moderator commands
-    return """
-Group commands usage:
-    group create <group-name>
-    group delete <group-id>
-    group add-user <group-id> <user-id> <permissions>
-    group delete-user <group-id> <user-id>
-    group list
-    group add <group-id> <file-path>
-"""
-
-
-def commands_usage():
-    return f"""
-Client commands usage:
-    add <file-path>
-    list [-u user_id | -g group_id]
-    share <file-id> <user-id> <permissions>
-    delete <file-id>
-    replace <file-id> <file-path>
-    details <file-id>
-    revoke <file-id> <user-id>
-    read <file-id>
-{group_commands_usage()}
-"""
-
-
-def usage():  # TODO logs commands
-    return f"""
-{commands_usage()}
-Logs command usage:
-    TODO
-Other commands:
-    exit
-"""
-
-
+# TODO move this function to common
 def create_packet(type: int, payload: dict) -> bytes:
     return BSON.encode({
         "version": PACKET_VERSION,
@@ -185,28 +154,71 @@ def validate_command(args: list) -> None:
 def process_command(client_socket, server_socket, args: list) -> None:
     if not args or len(args) == 0:
         raise ValueError(f"Invalid arguments list: '{args}'")
-    command = args[0]
 
+    command = args[0]
     match command:
         case "add":
-            # TODO Retrieve filename from the path (args[1])
-            with open(args[1], "rb") as file:
+            # Validate file path
+            if len(args) != 2:
+                raise ValueError(f"Invalid arguments.\nUsage: {usage._add}")
+            validate_params(file_path=(file_path := args[1]))
+
+            # TODO Retrieve filename from the file_path (use basename)
+            with open(file_path, "rb") as file:
                 content = file.read()
+
             # TODO Encrypt content
+
+            # TODO Create, encrypt and send packet
         case "list":
-            pass
+            packet = None
+            if len(args) == 1:
+                packet = create_packet(CommandType.LIST_REQUEST.value, {})
+            elif len(args) == 3:
+                match args[1]:
+                    case "-u":
+                        packet = create_packet(CommandType.LIST_REQUEST.value,
+                                               {"user_id": args[2]})
+                    case "-g":
+                        packet = create_packet(CommandType.LIST_REQUEST.value,
+                                               {"group_id": args[2]})
+                    case _:
+                        raise ValueError(f"Invalid flag.\nUsage: {usage._list}")
+            else:
+                raise ValueError(f"Invalid arguments.\nUsage: {usage._list}")
+
+            # TODO Encrypt and send packet
+            print(packet)
         case "share":
-            pass
+            if len(args) != 4:
+                raise ValueError(f"Invalid arguments.\nUsage: {usage._share}")
+            validate_params(file_id=(file_id := args[1]),
+                            user_id=(user_id := args[2]),
+                            permissions=(permissions := args[3]))
+
+            packet = create_packet(CommandType.SHARE_REQUEST.value,
+                                   {"file_id": file_id,
+                                    "user_id": user_id,
+                                    "permissions": permissions})
+            # TODO Request user public key from server
+            # TODO Encrypt and send packet
+            print(packet)
         case "delete":
-            return create_packet(
-                CommandType.DELETE_REQUEST.value,
-                {
-                    "file_id": args[1]
-                }
-            )
+            if len(args) != 2:
+                raise ValueError(f"Invalid arguments.\nUsage: {usage._delete}")
+            validate_params(file_id=(file_id := args[1]))
+
+            packet = create_packet(CommandType.DELETE_REQUEST.value,
+                                   {"file_id": file_id})
         case "replace":
-            with open(args[2], "rb") as file:
+            if len(args) != 3:
+                raise ValueError(f"Invalid arguments.\nUsage: {usage._replace}")
+            validate_params(file_id=(file_id := args[1]),
+                            file_path=(file_path := args[2]))
+
+            with open(file_path, "rb") as file:
                 new_content = file.read()
+
             # TODO Encrypt new content
         case "details":
             pass
@@ -234,8 +246,8 @@ def process_command(client_socket, server_socket, args: list) -> None:
                         content = file.read()
                     # TODO Encrypt content
                 case _:
-                    raise ValueError(f"Invalid group command: '{group_command}'\n"
-                                     f"{group_commands_usage()}")
+                    raise ValueError(f"Invalid command: group '{group_command}'\n"
+                                     f"{usage._group}")
         case _:
             raise ValueError(f"Invalid command: '{command}'\n"
-                             f"{usage()}")
+                             f"{usage._full}")
