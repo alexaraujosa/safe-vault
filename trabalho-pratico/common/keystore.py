@@ -2,6 +2,7 @@ import cryptography.hazmat.primitives.serialization.pkcs12 as pkcs12
 from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, NoEncryption
 from tempfile import NamedTemporaryFile
 
+
 class Keystore:
     def __init__(self, tmpCertFile, tmpKeyFile):
         self.tmpCertFile = tmpCertFile
