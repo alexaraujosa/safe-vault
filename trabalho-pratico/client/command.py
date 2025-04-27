@@ -4,15 +4,54 @@ from enum import Enum
 
 PACKET_VERSION = 1
 
+
 class CommandType(Enum):
-    ADD_REQUEST = 0,
-    ADD_RESPONSE = 1,
-    LIST_REQUEST = 2,
-    LIST_RESPONSE = 3,
-    SHARE_REQUEST = 4,
-    SHARE_RESPONSE = 5,
-    DELETE_REQUEST = 6,
+    ADD_REQUEST     = 0,
+    ADD_RESPONSE    = 1,
+    LIST_REQUEST    = 2,
+    LIST_RESPONSE   = 3,
+    SHARE_REQUEST   = 4,
+    SHARE_RESPONSE  = 5,
+    DELETE_REQUEST  = 6,
     DELETE_RESPONSE = 7
+
+
+def group_commands_usage():  # TODO moderator commands
+    return """
+Group commands usage:
+    group create <group-name>
+    group delete <group-id>
+    group add-user <group-id> <user-id> <permissions>
+    group delete-user <group-id> <user-id>
+    group list
+    group add <group-id> <file-path>
+"""
+
+
+def commands_usage():
+    return f"""
+Client commands usage:
+    add <file-path>
+    list [-u user_id | -g group_id]
+    share <file-id> <user-id> <permissions>
+    delete <file-id>
+    replace <file-id> <file-path>
+    details <file-id>
+    revoke <file-id> <user-id>
+    read <file-id>
+{group_commands_usage()}
+"""
+
+
+def usage():  # TODO logs commands
+    return f"""
+{commands_usage()}
+Logs command usage:
+    TODO
+Other commands:
+    exit
+"""
+
 
 def create_packet(type: int, payload: dict) -> bytes:
     return BSON.encode({
@@ -21,30 +60,37 @@ def create_packet(type: int, payload: dict) -> bytes:
         "payload": payload
     })
 
+
 def validate_command(args: list) -> None:
     if not args or len(args) == 0:
         raise ValueError(f"Invalid arguments list: '{args}'")
-    
+
     command = args[0]
     match command:
         case "add":
             if len(args) != 2:
-                raise ValueError(f"Invalid arguments. Usage: add <file-path>")
+                raise ValueError("Invalid arguments.\n"
+                                 "Usage: add <file-path>")
             validate_params(file_path=args[1])
 
         case "list":
             if len(args) != 1 or len(args) != 3:
-                raise ValueError(f"Invalid arguments. Usage: list [-u user_id | -g group_id]")
-            
+                raise ValueError("Invalid arguments.\n"
+                                 "Usage: list [-u user_id | -g group_id]")
+
             if len(args) == 3:
                 if args[1] not in ["-u", "-g"]:
-                    raise ValueError(f"Invalid flag. Usage: list [-u user_id | -g group_id]")
-                if args[1] == "-u": validate_params(user_id=args[2])
-                else: validate_params(group_id=args[2])
+                    raise ValueError("Invalid flag.\n"
+                                     "Usage: list [-u user_id | -g group_id]")
+                if args[1] == "-u":
+                    validate_params(user_id=args[2])
+                else:
+                    validate_params(group_id=args[2])
 
         case "share":
             if len(args) != 4:
-                raise ValueError(f"Invalid arguments. Usage: share <file-id> <user-id> <permissions>")
+                raise ValueError("Invalid arguments.\n"
+                                 "Usage: share <file-id> <user-id> <permissions>")
             validate_params(
                 file_id=args[1],
                 user_id=args[2],
@@ -53,25 +99,29 @@ def validate_command(args: list) -> None:
 
         case "delete":
             if len(args) != 2:
-                raise ValueError(f"Invalid arguments. Usage: delete <file-id>")
+                raise ValueError("Invalid arguments.\n"
+                                 "Usage: delete <file-id>")
             validate_params(file_id=args[1])
 
         case "replace":
             if len(args) != 3:
-                raise ValueError(f"Invalid arguments. Usage: replace <file-id> <file-path>")
+                raise ValueError("Invalid arguments.\n"
+                                 "Usage: replace <file-id> <file-path>")
             validate_params(
-                file_id=args[1],
+                file_id=(file_id := args[1]),  # TODO use this syntax
                 file_path=args[2]
             )
 
         case "details":
             if len(args) != 2:
-                raise ValueError(f"Invalid arguments. Usage: details <file-id>")
+                raise ValueError("Invalid arguments.\n"
+                                 "Usage: details <file-id>")
             validate_params(file_id=args[1])
 
         case "revoke":
             if len(args) != 3:
-                raise ValueError(f"Invalid arguments. Usage: revoke <file-id> <user-id>")
+                raise ValueError("Invalid arguments.\n"
+                                 "Usage: revoke <file-id> <user-id>")
             validate_params(
                 file_id=args[1],
                 user_id=args[2]
@@ -119,7 +169,7 @@ def validate_command(args: list) -> None:
                 case "list":
                     if len(args) != 2:
                         raise ValueError(f"Invalid arguments. Usage: group list")
-                    
+
                 case "add":
                     if len(args) != 4:
                         raise ValueError(f"Invalid arguments. Usage: group add <group-id> <file-path>")
@@ -131,11 +181,12 @@ def validate_command(args: list) -> None:
         case _:
             raise ValueError(f"Invalid command '{command}'")
 
-# TODO Create packet and return it
-def process_command(args: list) -> bytes:
-    validate_command(args)
+
+def process_command(client_socket, server_socket, args: list) -> None:
+    if not args or len(args) == 0:
+        raise ValueError(f"Invalid arguments list: '{args}'")
     command = args[0]
-    
+
     match command:
         case "add":
             # TODO Retrieve filename from the path (args[1])
@@ -182,3 +233,9 @@ def process_command(args: list) -> bytes:
                     with open(args[3], "rb") as file:
                         content = file.read()
                     # TODO Encrypt content
+                case _:
+                    raise ValueError(f"Invalid group command: '{group_command}'\n"
+                                     f"{group_commands_usage()}")
+        case _:
+            raise ValueError(f"Invalid command: '{command}'\n"
+                             f"{usage()}")
