@@ -9,7 +9,7 @@ import readline
 import traceback
 from cryptography import x509
 
-# from client.command    import process_command  # TODO import this
+from client.handler    import process_command
 from common.validation import is_valid_file
 from common.keystore   import Keystore
 
@@ -105,8 +105,6 @@ def main():
                         command = input("> ").strip()
                         if not command:
                             continue
-
-                        readline.add_history(command)
                     except KeyboardInterrupt:
                         if (not doubleSIGINT):
                             print("To exit, press CTRL + C again or type 'exit'.")
@@ -118,23 +116,24 @@ def main():
                     except EOFError:
                         break
 
+                    readline.add_history(command)
                     doubleSIGINT = False
                     args = shlex.split(command)
-                    print(f"Arguments: {args}")
 
                     if args[0] == "exit":
                         break
 
                     try:
-                        # TODO: Actually process packets to and from the server.
-                        # packet = process_command(args)
-                        ssock.send(bytes(command, "utf-8"))
-                        res = ssock.recv(1024)
-                        print(f"--> {res}")
-                    except Exception:
+                        process_command(sock, ssock, args)
+                    except ValueError as e:
+                        print(e)
+                    except ssl.SSLError:
                         print("❌ Error on packet serialization.")
                         traceback.print_exc()
-                        continue
+                    except Exception as e:
+                        print(f"❌ Error on client socket: {e}")
+                        traceback.print_exc()
+                        sys.exit(1)
 
                 ssock.close()
     except ssl.SSLCertVerificationError:
