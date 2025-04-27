@@ -1,34 +1,34 @@
 import os
-import sys
 import argparse
 import datetime
 from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import serialization, hashes
 import cryptography.hazmat.primitives.serialization.pkcs12 as pkcs12
-from cryptography.hazmat.primitives.asymmetric import ec
+# from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.backends import default_backend
 
-#region ============== Configuration ==============
+# ============== Configuration ==============
 CA_SUBJECT = {
-    "C": "PT", 
-    "ST": "Minho", 
-    "L": "Braga", 
-    "O": "Universidade do Minho", 
-    "OU": "SSI VAULT SERVICE", 
+    "C": "PT",
+    "ST": "Minho",
+    "L": "Braga",
+    "O": "Universidade do Minho",
+    "OU": "SSI VAULT SERVICE",
     "CN": "SSI VAULT SERVICE CA",
     "PSEUDONYM": "VAULT_CA"
 }
 CERT_SUBJECT_TEMPLATE = {
-    "C": "PT", 
-    "ST": "Minho", 
-    "L": "Braga", 
-    "O": "Universidade do Minho", 
+    "C": "PT",
+    "ST": "Minho",
+    "L": "Braga",
+    "O": "Universidade do Minho",
     "OU": "SSI VAULT SERVICE"
 }
-#endregion ============== Configuration ==============
+# ============== Configuration ==============
 
-#region ============== Functions ==============
+# ============== Functions ==============
 NAMEOID_MAPPER = {
     "C": "COUNTRY_NAME",
     "ST": "STATE_OR_PROVINCE_NAME",
@@ -39,22 +39,34 @@ NAMEOID_MAPPER = {
     "PSEUDONYM": "PSEUDONYM",
 }
 
+
 def generatePrivateKey():
-    return ec.generate_private_key(
-        ec.SECP256R1(),
+    # Using Elliptic Curve
+    # return ec.generate_private_key(
+    #     ec.SECP256R1(),
+    #     backend=default_backend()
+    # )
+    # Using RSA (same as client.encryption module)
+    return rsa.generate_private_key(
+        public_exponent=65537,
+        key_size=2048,
         backend=default_backend()
     )
+
 
 def generateX509Name(attributes):
     return x509.Name([
         x509.NameAttribute(getattr(NameOID, NAMEOID_MAPPER[k]), v) for k, v in attributes.items()
     ])
 
-def generateCACert(key, subjectInfo, nValidBefore = None, nValidAfter = None):
+
+def generateCACert(key, subjectInfo, nValidBefore=None, nValidAfter=None):
     subject = generateX509Name(subjectInfo)
 
-    if (nValidBefore == None): nValidBefore = datetime.datetime.utcnow()
-    if (nValidAfter == None): nValidAfter = datetime.datetime.utcnow() + datetime.timedelta(days=365)
+    if (nValidBefore is None):
+        nValidBefore = datetime.datetime.utcnow()
+    if (nValidAfter is None):
+        nValidAfter = datetime.datetime.utcnow() + datetime.timedelta(days=365)
 
     cert = (
         x509.CertificateBuilder()
@@ -70,13 +82,16 @@ def generateCACert(key, subjectInfo, nValidBefore = None, nValidAfter = None):
 
     return cert
 
-def generateSubjectCert(caCert, caKey, key, commonName, subjectId, nValidBefore = None, nValidAfter = None):
+
+def generateSubjectCert(caCert, caKey, key, commonName, subjectId, nValidBefore=None, nValidAfter=None):
     subjectInfo = CERT_SUBJECT_TEMPLATE.copy()
     subjectInfo["CN"] = commonName
     subjectInfo["PSEUDONYM"] = subjectId
 
-    if (nValidBefore == None): nValidBefore = datetime.datetime.utcnow()
-    if (nValidAfter == None): nValidAfter = datetime.datetime.utcnow() + datetime.timedelta(days=365)
+    if (nValidBefore is None):
+        nValidBefore = datetime.datetime.utcnow()
+    if (nValidAfter is None):
+        nValidAfter = datetime.datetime.utcnow() + datetime.timedelta(days=365)
 
     subject = generateX509Name(subjectInfo)
     cert = (
@@ -93,6 +108,7 @@ def generateSubjectCert(caCert, caKey, key, commonName, subjectId, nValidBefore 
 
     return cert
 
+
 def generatePKCS12(name, cert, key, caCert):
     # p12 = crypto.PKCS12()
     # p12.set_privatekey(crypto.PKey.from_cryptography_key(key))
@@ -103,12 +119,14 @@ def generatePKCS12(name, cert, key, caCert):
 
     return pkcs12.serialize_key_and_certificates(name, key, cert, [caCert], serialization.NoEncryption())
 
+
 def readPEM(filename, pemType):
     with open(filename, "rb") as f:
         if pemType == "key":
             return serialization.load_pem_private_key(f.read(), None)
         elif pemType == "cert":
             return x509.load_pem_x509_certificate(f.read())
+
 
 def writePEM(filename, data, pemType):
     with open(filename, "wb") as f:
@@ -120,7 +138,8 @@ def writePEM(filename, data, pemType):
             ))
         elif pemType == "cert":
             f.write(data.public_bytes(serialization.Encoding.PEM))
-#endregion ============== Functions ==============
+# ============== Functions ==============
+
 
 # === Example Usage ===
 if __name__ == "__main__":
@@ -142,8 +161,8 @@ if __name__ == "__main__":
     # print("✅ CA cert, server cert, and PKCS12 keystore generated.")
 
     parser = argparse.ArgumentParser(
-        description="A utility for the generation of self-signed " \
-            "Certification Authorities and keystores issued by said CAs."
+        description="A utility for the generation of self-signed "
+                    "Certification Authorities and keystores issued by said CAs."
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -153,13 +172,13 @@ if __name__ == "__main__":
 
     # Cert generation
     genCertCommand = subparsers.add_parser("genstore", help="Generate signed cert and PKCS12")
-    genCertCommand.add_argument("--out-dir", required=True, type=str)
-    genCertCommand.add_argument("--ca-key", required=True, type=str)
-    genCertCommand.add_argument("--ca-cert", required=True, type=str)
-    genCertCommand.add_argument("--name", required=True, type=str)
-    genCertCommand.add_argument("--id", required=True, type=str)
+    genCertCommand.add_argument("--out-dir",          required=True,  type=str)
+    genCertCommand.add_argument("--ca-key",           required=True,  type=str)
+    genCertCommand.add_argument("--ca-cert",          required=True,  type=str)
+    genCertCommand.add_argument("--name",             required=True,  type=str)
+    genCertCommand.add_argument("--id",               required=True,  type=str)
     genCertCommand.add_argument("--not-valid-before", required=False, type=str)
-    genCertCommand.add_argument("--not-valid-after", required=False, type=str)
+    genCertCommand.add_argument("--not-valid-after",  required=False, type=str)
 
     args = parser.parse_args()
 
@@ -178,20 +197,20 @@ if __name__ == "__main__":
             caCert = readPEM(args.ca_cert, "cert")
 
             nValidBefore = datetime.datetime.strptime(args.not_valid_before, "%d/%m/%Y") \
-                if (args.not_valid_before != None) \
+                if (args.not_valid_before is not None) \
                 else None
             nValidAfter = datetime.datetime.strptime(args.not_valid_after, "%d/%m/%Y") \
-                if (args.not_valid_after != None) \
+                if (args.not_valid_after is not None) \
                 else None
 
             key = generatePrivateKey()
             cert = generateSubjectCert(
-                caCert, 
-                caKey, 
-                key, 
-                args.name, 
-                args.id, 
-                nValidBefore, 
+                caCert,
+                caKey,
+                key,
+                args.name,
+                args.id,
+                nValidBefore,
                 nValidAfter
             )
             p12 = generatePKCS12(bytes(args.id, "utf-8"), cert, key, caCert)
