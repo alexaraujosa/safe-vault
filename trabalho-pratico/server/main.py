@@ -54,6 +54,7 @@ def handleClient(operations, conn: ssl.SSLSocket, addr):
                     break
 
                 print(f"📦 Received packet from {addr}")
+                # TODO lock other threads from accessing the operations object
                 process_request(operations, user_id, conn, packet_data)
             except ssl.SSLEOFError:
                 print(f"🚧 Client connection from {addr} died before server could close it.")
