@@ -11,11 +11,15 @@ def handle_boolean_response(response: dict) -> bool:
     """
     Handle boolean response from server.
     Returns True if the response is successful, False otherwise.
+    Prints the message if present.
+
+    INFO: Packet is already verified with decode_packet() so the payload exists.
     """
-    if response.get("type") == CommandType.ERROR.value:
-        print(response.get("message"))
-        return False
-    return True
+    message = response.get("payload").get("message")
+    if message:
+        print(message)
+
+    return response.get("type") == CommandType.SUCCESS.value
 
 
 def process_command(client_socket, server_socket, args: list) -> None:
@@ -124,15 +128,22 @@ def process_command(client_socket, server_socket, args: list) -> None:
 
                     # Await server boolean response
                     response = decode_packet(server_socket.recv(1024))  # TODO DEFINE MAX SIZE
-                    if (handle_boolean_response(response)):
-                        print(f"Group id: {group_id}")
+                    handle_boolean_response(response)
 
                 case "delete":
                     if len(args) != 3:
                         raise ValueError(f"Invalid arguments.\nUsage: {usage._group_delete}")
                     validate_params(group_id=(group_id := args[2]))
 
-                    # TODO Delete group (server can return failure if it doesn't exist)
+                    # Send group deletion request to server
+                    packet = create_packet(CommandType.GROUP_DELETE_REQUEST.value,
+                                           {"group_id": group_id})
+                    server_socket.send(packet)
+
+                    # Await server boolean response
+                    response = decode_packet(server_socket.recv(1024))  # TODO DEFINE MAX SIZE
+                    handle_boolean_response(response)
+
                 case "add-user":
                     if len(args) != 5:
                         raise ValueError(f"Invalid arguments.\nUsage: {usage._group_add_user}")
@@ -140,7 +151,16 @@ def process_command(client_socket, server_socket, args: list) -> None:
                                     user_id=(user_id := args[3]),
                                     permissions=(permissions := args[4]))
 
-                    # TODO add user
+                    # TODO Request master group and user public keys from server
+                    # TODO Decrypt the user public key with the current user private key
+                    # TODO Encrypt the master group public key with the user public key
+                    # TODO Send the encrypted master group public key to the server
+                    # payload = {
+                    #    "group_id": group_id,
+                    #    "user_id": user_id,
+                    #    "permissions": permissions,
+                    #    "group_key": encrypted_group_key
+                    # }
                 case "delete-user":
                     if len(args) != 4:
                         raise ValueError(f"Invalid arguments.\nUsage: {usage._group_delete_user}")
