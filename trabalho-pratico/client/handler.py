@@ -1,4 +1,5 @@
 import client.usage as usage
+from client.encryption import RSA, AES_GCM
 from common.validation import validate_params
 from common.packet import (
     CommandType,
@@ -22,7 +23,11 @@ def handle_boolean_response(response: dict) -> bool:
     return response.get("type") == CommandType.SUCCESS.value
 
 
-def process_command(client_socket, server_socket, args: list) -> None:
+def process_command(client_socket,  # TODO add type
+                    server_socket,  # TODO add type
+                    args: list,
+                    client_private_key: bytes,
+                    client_public_key: bytes):
     if not args or len(args) == 0:
         # INFO this exception should never be raised
         raise ValueError(f"No command provided.\n{usage._full}")
@@ -124,14 +129,16 @@ def process_command(client_socket, server_socket, args: list) -> None:
                         raise ValueError(f"Invalid arguments.\nUsage: {usage._group_create}")
                     validate_params(group_id=(group_id := args[2]))
 
-                    # TODO create master group key AES
-                    # TODO request current user public key from server
-                    # TODO encrypt master group key with current user public key
+                    # Create master group key AES
+                    group_key = AES_GCM.generate_key()
+
+                    # Encrypt master group key with current user private key
+                    group_key = RSA.encrypt(group_key, client_private_key)
 
                     # Send group creation request to server
                     packet = create_packet(CommandType.GROUP_CREATE_REQUEST.value,
                                            {"name": group_id,
-                                            "key": b"TODO"})  # TODO encrypted_group_key
+                                            "key": str(group_key)})
                     server_socket.send(packet)
 
                     # Await server boolean response
