@@ -12,6 +12,11 @@ def is_valid_file_name(file_name: str) -> bool:
     return isinstance(file_name, str) and len(file_name) > 0
 
 
+def is_valid_file(file_path: str) -> bool:
+    "Check if the given file path exists."
+    return os.path.exists(file_path)
+
+
 def is_valid_file_id(file_id: str) -> bool:
     """
     Check if the given file ID is valid, i.e., in the format 'user_id:file_name',

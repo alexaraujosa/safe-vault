@@ -10,9 +10,8 @@ import readline
 import traceback
 from cryptography import x509
 
-# TODO: Doesn't exist on branch "communication".
-# from client.command    import process_command
-# from common.validation import is_valid_file
+from client.command    import process_command
+from common.validation import is_valid_file
 from common.keystore   import Keystore
 
 SERVER_ID = "VAULT_SERVER"
@@ -59,8 +58,7 @@ def main():
         sys.exit(1)
     
     for file in [ca_cert_file, p12_file]:
-        # if not is_valid_file(file):
-        if not os.path.exists(file):
+        if not is_valid_file(file):
             print(f"❌ Invalid file: {file}.")
             sys.exit(1)
 

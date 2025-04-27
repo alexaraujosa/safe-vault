@@ -9,10 +9,9 @@ import traceback
 import threading
 from cryptography import x509
 
-# TODO: Doesn't exist on branch "communication".
-# from server.config     import Config
-# from server.operations import Operations
-# from common.validation import is_valid_file
+from server.config     import Config
+from server.operations import Operations
+from common.validation import is_valid_file
 from common.keystore import Keystore
 
 CONFIG_PATH = "server/config.json"
@@ -92,8 +91,7 @@ def main():
         sys.exit(1)
     
     for file in [ca_cert_file, p12_file]:
-        # if not is_valid_file(file):
-        if not os.path.exists(file):
+        if not is_valid_file(file):
             print(f"❌ Invalid file: {file}.")
             sys.exit(1)
         
@@ -110,21 +108,21 @@ def main():
         context.verify_mode = ssl.CERT_REQUIRED
 
         # !!!!! DEBUG ONLY - Dump keylog file !!!!!
-        context.keylog_filename = "VAULT_SERVER_KL.log"
+        # context.keylog_filename = "VAULT_SERVER_KL.log"
     except Exception as e:
         print(f"❌ Failed to set up SSL context.")
         traceback.print_exc()
         sys.exit(1)
 
-    # try:
-    #     # Load the JSON config file
-    #     config = Config(CONFIG_PATH)
+    try:
+        # Load the JSON config file
+        config = Config(CONFIG_PATH)
 
-    #     # Initalize server operations class
-    #     operations = Operations(config.config, VAULT_PATH)
-    # except Exception as e:
-    #     print(f"Failed to set up server configuration and operations.")
-    #     traceback.print_exc()
+        # Initalize server operations class
+        operations = Operations(config.config, VAULT_PATH)
+    except Exception as e:
+        print(f"Failed to set up server configuration and operations.")
+        traceback.print_exc()
 
     # Connection
     try:
@@ -153,13 +151,13 @@ def main():
         traceback.print_exc()
         sys.exit(1)
 
-    # # Save the config file
-    # try:
-    #     config.save(config=operations.config)
-    # except Exception as e:
-    #     print(f"Failed to save server config.")
-    #     traceback.print_exc()
-    #     sys.exit(1)
+    # Save the config file
+    try:
+        config.save(config=operations.config)
+    except Exception as e:
+        print(f"Failed to save server config.")
+        traceback.print_exc()
+        sys.exit(1)
 
 
 if __name__ == "__main__":
