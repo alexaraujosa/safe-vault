@@ -41,8 +41,12 @@ def create_packet(type: int, payload: dict) -> bytes:
     })
 
 
-def create_error_packet(error: str) -> bytes:
-    return create_packet(CommandType.ERROR.value, {"error": error})
+def create_error_packet(message: str) -> bytes:
+    return create_packet(CommandType.ERROR.value, {"message": message})
+
+
+def create_success_packet(message: str) -> bytes:
+    return create_packet(CommandType.SUCCESS.value, {"message": message})
 
 
 def decode_packet(packet: bytes) -> dict[str, Any]:
