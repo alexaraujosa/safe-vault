@@ -15,7 +15,24 @@ Each packet header includes the following fields:
 - version: Specifies the protocol version, used to control the communication compatibility between the two solutions.
 - type: Identifies the meaning of the payload, guiding its correct interpretation.
 
-## Commands
+# Testing the communication
+
+In order to test the communication between the server and a client:
+1. Generate a CA with: `python3 server/certutil.py genca --out-dir certs`
+2. Generate the Server Keystore with: `python3 server/certutil.py genstore --out-dir certs --name 'SSI Vault Server' --id 'VAULT_SERVER' --ca-cert=certs/VAULT_CA.crt --ca-key=certs/VAULT_CA.pem`
+3. Generate a Client Keystore with: `python3 server/certutil.py genstore --out-dir certs --name 'User 1' --id 'VAULT_CLI1' --ca-cert=certs/VAULT_CA.crt --ca-key=certs/VAULT_CA.pem`
+4. Start the server with: `python3 -m server.main --cert certs/VAULT_CA.crt --keystore certs/VAULT_SERVER.p12`
+5. Run the client with `python3 -m client.main --cert certs/VAULT_CA.crt --keystore certs/VAULT_CLI1.p12`
+
+Additionally, testing certificates where left on the `test` folder.
+- `VAULT_CA.crt` is the certificate of the CA.
+- `VAULT_CA.pem` is the private key of the CA.
+- `VAULT_CLI4.p12` is the keystore of a valid client.
+- `VAULT_CLI5.p12` is the keystore of a client that expired on 22/04/2025.
+- `VAULT_SERVER.p12` is the server's keystore.
+- `VAULT_SERVER2.p12` is a keystore for a "fake server". Used to test whether the client will reject a wrong connection.
+
+# Commands
 
 ### add 
 
