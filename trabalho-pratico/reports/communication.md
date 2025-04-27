@@ -17,6 +17,8 @@ Each packet header includes the following fields:
 
 # Testing the communication
 
+TODO update this section!
+
 In order to test the communication between the server and a client:
 1. Generate a CA with: `python3 server/certutil.py genca --out-dir certs`
 2. Generate the Server Keystore with: `python3 server/certutil.py genstore --out-dir certs --name 'SSI Vault Server' --id 'VAULT_SERVER' --ca-cert=certs/VAULT_CA.crt --ca-key=certs/VAULT_CA.pem`
