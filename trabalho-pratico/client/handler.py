@@ -30,146 +30,27 @@ def create_packet(type: int, payload: dict) -> bytes:
     })
 
 
-def validate_command(args: list) -> None:
-    if not args or len(args) == 0:
-        raise ValueError(f"Invalid arguments list: '{args}'")
-
-    command = args[0]
-    match command:
-        case "add":
-            if len(args) != 2:
-                raise ValueError("Invalid arguments.\n"
-                                 "Usage: add <file-path>")
-            validate_params(file_path=args[1])
-
-        case "list":
-            if len(args) != 1 or len(args) != 3:
-                raise ValueError("Invalid arguments.\n"
-                                 "Usage: list [-u user_id | -g group_id]")
-
-            if len(args) == 3:
-                if args[1] not in ["-u", "-g"]:
-                    raise ValueError("Invalid flag.\n"
-                                     "Usage: list [-u user_id | -g group_id]")
-                if args[1] == "-u":
-                    validate_params(user_id=args[2])
-                else:
-                    validate_params(group_id=args[2])
-
-        case "share":
-            if len(args) != 4:
-                raise ValueError("Invalid arguments.\n"
-                                 "Usage: share <file-id> <user-id> <permissions>")
-            validate_params(
-                file_id=args[1],
-                user_id=args[2],
-                permissions=args[3]
-            )
-
-        case "delete":
-            if len(args) != 2:
-                raise ValueError("Invalid arguments.\n"
-                                 "Usage: delete <file-id>")
-            validate_params(file_id=args[1])
-
-        case "replace":
-            if len(args) != 3:
-                raise ValueError("Invalid arguments.\n"
-                                 "Usage: replace <file-id> <file-path>")
-            validate_params(
-                file_id=(file_id := args[1]),  # TODO use this syntax
-                file_path=args[2]
-            )
-
-        case "details":
-            if len(args) != 2:
-                raise ValueError("Invalid arguments.\n"
-                                 "Usage: details <file-id>")
-            validate_params(file_id=args[1])
-
-        case "revoke":
-            if len(args) != 3:
-                raise ValueError("Invalid arguments.\n"
-                                 "Usage: revoke <file-id> <user-id>")
-            validate_params(
-                file_id=args[1],
-                user_id=args[2]
-            )
-
-        case "read":
-            if len(args) != 2:
-                raise ValueError(f"Invalid arguments. Usage: read <file-id>")
-            validate_params(
-                file_id=args[1]
-            )
-
-        case "group":
-            if len(args) < 2:
-                raise ValueError(f"Invalid command '{command}'")
-            group_command = args[1]
-            match group_command:
-                case "create":
-                    if len(args) != 3:
-                        raise ValueError(f"Invalid arguments. Usage: group create <group-name>")
-                    validate_params(group_id=args[2])
-
-                case "delete":
-                    if len(args) != 3:
-                        raise ValueError(f"Invalid arguments. Usage: group delete <group-id>")
-                    validate_params(group_id=args[2])
-
-                case "add-user":
-                    if len(args) != 5:
-                        raise ValueError(f"Invalid arguments. Usage: group add-user <group-id> <user-id> <permissions>")
-                    validate_params(
-                        group_id=args[2],
-                        user_id=args[3],
-                        permissions=args[4]
-                    )
-
-                case "delete-user":
-                    if len(args) != 4:
-                        raise ValueError(f"Invalid arguments. Usage: group delete-user <group-id> <user-id>")
-                    validate_params(
-                        group_id=args[2],
-                        user_id=args[3]
-                    )
-
-                case "list":
-                    if len(args) != 2:
-                        raise ValueError(f"Invalid arguments. Usage: group list")
-
-                case "add":
-                    if len(args) != 4:
-                        raise ValueError(f"Invalid arguments. Usage: group add <group-id> <file-path>")
-                    validate_params(
-                        group_id=args[2],
-                        file_path=args[3]
-                    )
-
-        case _:
-            raise ValueError(f"Invalid command '{command}'")
-
-
 def process_command(client_socket, server_socket, args: list) -> None:
     if not args or len(args) == 0:
-        raise ValueError(f"Invalid arguments list: '{args}'")
+        # INFO this exception should never be raised
+        raise ValueError(f"No command provided.\n{usage._full}")
 
     command = args[0]
     match command:
         case "add":
-            # Validate file path
             if len(args) != 2:
                 raise ValueError(f"Invalid arguments.\nUsage: {usage._add}")
             validate_params(file_path=(file_path := args[1]))
 
             # TODO Retrieve filename from the file_path (use basename)
+            # TODO use try/except to handle file not found
             with open(file_path, "rb") as file:
                 content = file.read()
 
             # TODO Encrypt content
 
             # TODO Create, encrypt and send packet
+        # TODO 2 matches for list command maybe (clean)
         case "list":
             packet = None
             if len(args) == 1:
@@ -216,38 +97,80 @@ def process_command(client_socket, server_socket, args: list) -> None:
             validate_params(file_id=(file_id := args[1]),
                             file_path=(file_path := args[2]))
 
+            # TODO use try/except to handle file not found
             with open(file_path, "rb") as file:
                 new_content = file.read()
 
             # TODO Encrypt new content
         case "details":
-            pass
+            if len(args) != 2:
+                raise ValueError(f"Invalid arguments.\nUsage: {usage._details}")
+            validate_params(file_id=(file_id := args[1]))
+
+            # TODO details
         case "revoke":
-            pass
+            if len(args) != 3:
+                raise ValueError(f"Invalid arguments.\nUsage: {usage._revoke}")
+            validate_params(file_id=(file_id := args[1]),
+                            user_id=(user_id := args[2]))
+
+            # TODO revoke
         case "read":
-            pass
+            if len(args) != 2:
+                raise ValueError(f"Invalid arguments.\nUsage: {usage._read}")
+            validate_params(file_id=(file_id := args[1]))
+
+            # TODO read
         case "group":
             group_command = args[1]
             match group_command:
                 case "create":
-                    pass
+                    if len(args) != 3:
+                        raise ValueError(f"Invalid arguments.\nUsage: {usage._group_create}")
+                    validate_params(group_id=(group_id := args[2]))
+
+                    # TODO Create group (server can return failure if it already exists)
                 case "delete":
-                    pass
+                    if len(args) != 3:
+                        raise ValueError(f"Invalid arguments.\nUsage: {usage._group_delete}")
+                    validate_params(group_id=(group_id := args[2]))
+
+                    # TODO Delete group (server can return failure if it doesn't exist)
                 case "add-user":
-                    pass
+                    if len(args) != 5:
+                        raise ValueError(f"Invalid arguments.\nUsage: {usage._group_add_user}")
+                    validate_params(group_id=(group_id := args[2]),
+                                    user_id=(user_id := args[3]),
+                                    permissions=(permissions := args[4]))
+
+                    # TODO add user
                 case "delete-user":
-                    pass
-                case "delete-user":
-                    pass
+                    if len(args) != 4:
+                        raise ValueError(f"Invalid arguments.\nUsage: {usage._group_delete_user}")
+                    validate_params(group_id=(group_id := args[2]),
+                                    user_id=(user_id := args[3]))
+
+                    # TODO delete user
                 case "list":
-                    pass
+                    if len(args) != 2:
+                        raise ValueError(f"Invalid arguments.\nUsage: {usage._group_list}")
+
+                    # TODO list groups
                 case "add":
-                    with open(args[3], "rb") as file:
+                    if len(args) != 4:
+                        raise ValueError(f"Invalid arguments.\nUsage: {usage._group_add}")
+                    validate_params(group_id=(group_id := args[2]),
+                                    file_path=(file_path := args[3]))
+
+                    # TODO use try/except to handle file not found
+                    with open(file_path, "rb") as file:
                         content = file.read()
+
+                    # TODO Retrieve filename from the file_path (use basename)
+
                     # TODO Encrypt content
                 case _:
                     raise ValueError(f"Invalid command: group '{group_command}'\n"
                                      f"{usage._group}")
         case _:
-            raise ValueError(f"Invalid command: '{command}'\n"
-                             f"{usage._full}")
+            raise ValueError(f"Invalid command: '{command}'\n{usage._full}")
