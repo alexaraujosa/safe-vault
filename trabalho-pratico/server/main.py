@@ -10,6 +10,7 @@ from cryptography import x509
 
 from server.config     import Config
 from server.operations import Operations
+from server.handler    import process_request
 from common.keystore   import Keystore
 from common.validation import is_valid_file
 
@@ -26,7 +27,7 @@ def extractSubjectId(cert):
     return None
 
 
-def handleClient(conn: ssl.SSLSocket, addr):
+def handleClient(operations, conn: ssl.SSLSocket, addr):
     print(f"🔗 Connection from {addr} established with mutual authentication.")
 
     try:
@@ -35,25 +36,25 @@ def handleClient(conn: ssl.SSLSocket, addr):
         peerCert = conn.getpeercert(binary_form=True)
         if peerCert:
             peerCertObj = x509.load_der_x509_certificate(peerCert)
-            userId = extractSubjectId(peerCertObj)
+            user_id = extractSubjectId(peerCertObj)
 
-            if (userId is None):
-                print("❌ Invalid User ID.")
+            if (not user_id):
+                print("❌ Cannot extract user id from certificate.")
                 conn.close()
                 return
-            else:
-                print(f"✅ Authenticated User: {userId}")
+
+            print(f"✅ Authenticated user: {user_id}")
 
         _died = False
         while True:
             try:
                 # TODO: Currently echoing messages back to the client. Process packets here.
-                message = conn.recv(1024).decode()
-                if message:
-                    print(f"📩 Message from {addr}: {message}")
-                    conn.send(message.encode("utf-8"))
-                else:
+                packet_data = conn.recv()
+                if not packet_data:
                     break
+
+                print(f"📦 Received packet from {addr}")
+                process_request(operations, user_id, conn, packet_data)
             except ssl.SSLEOFError:
                 print(f"🚧 Client connection from {addr} died before server could close it.")
                 _died = True
@@ -132,7 +133,7 @@ def main():
                 while True:
                     try:
                         conn, addr = ssock.accept()
-                        client_thread = threading.Thread(target=handleClient, args=(conn, addr))
+                        client_thread = threading.Thread(target=handleClient, args=(operations, conn, addr))
                         client_thread.start()
                         # print(f"Active connections: {threading.active_count() - 1}")
                     except ssl.SSLCertVerificationError:
