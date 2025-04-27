@@ -1,4 +1,25 @@
 from common.validation import validate_params
+from bson import BSON
+from enum import Enum
+
+PACKET_VERSION = 1
+
+class CommandType(Enum):
+    ADD_REQUEST = 0,
+    ADD_RESPONSE = 1,
+    LIST_REQUEST = 2,
+    LIST_RESPONSE = 3,
+    SHARE_REQUEST = 4,
+    SHARE_RESPONSE = 5,
+    DELETE_REQUEST = 6,
+    DELETE_RESPONSE = 7
+
+def create_packet(type: int, payload: dict) -> bytes:
+    return BSON.encode({
+        "version": PACKET_VERSION,
+        "type": type,
+        "payload": payload
+    })
 
 def validate_command(args: list) -> None:
     if not args or len(args) == 0:
@@ -111,14 +132,13 @@ def validate_command(args: list) -> None:
             raise ValueError(f"Invalid command '{command}'")
 
 # TODO Create packet and return it
-def process_command(args: list):
+def process_command(args: list) -> bytes:
     validate_command(args)
     command = args[0]
-    packet = None
     
     match command:
         case "add":
-            # TODO Retrive filename from the path (args[1])
+            # TODO Retrieve filename from the path (args[1])
             with open(args[1], "rb") as file:
                 content = file.read()
             # TODO Encrypt content
@@ -127,7 +147,12 @@ def process_command(args: list):
         case "share":
             pass
         case "delete":
-            pass
+            return create_packet(
+                CommandType.DELETE_REQUEST.value,
+                {
+                    "file_id": args[1]
+                }
+            )
         case "replace":
             with open(args[2], "rb") as file:
                 new_content = file.read()
