@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import os
 import sys
 import ssl
 import shlex
@@ -10,25 +9,29 @@ import readline
 import traceback
 from cryptography import x509
 
-from client.command    import process_command
+# from client.command    import process_command  # TODO import this
 from common.validation import is_valid_file
 from common.keystore   import Keystore
 
 SERVER_ID = "VAULT_SERVER"
 HISTORY_SIZE = 100
 
+
 def extractSubjectId(cert):
     subject = cert.subject
 
     for attr in subject:
-        if attr.oid == x509.NameOID.PSEUDONYM: return attr.value
+        if attr.oid == x509.NameOID.PSEUDONYM:
+            return attr.value
     return None
+
 
 def setup_readline():
     readline.set_history_length(HISTORY_SIZE)
     readline.set_auto_history(False)
     readline.parse_and_bind("tab: complete")
     readline.parse_and_bind("set blink-matching-paren on")
+
 
 def main():
     parser = argparse.ArgumentParser("client")
@@ -41,13 +44,11 @@ def main():
     ca_cert_file = args.cert
     p12_file = args.keystore
     port = args.port
-    try:
-        if not (0 < port < 65536):
-            raise ValueError
-    except ValueError:
+
+    if not (1 <= port <= 65535):
         print("❌ Invalid port number. Must be between 1 and 65535.")
         sys.exit(1)
-    
+
     for file in [ca_cert_file, p12_file]:
         if not is_valid_file(file):
             print(f"❌ Invalid file: {file}.")
@@ -65,15 +66,15 @@ def main():
         # Verify if the server certificate is signed by a trusted CA
         context.verify_mode = ssl.CERT_REQUIRED
 
-        # There are two options to check if the peer connection is in fact the server or just a valid client certificate 
+        # There are two options to check if the peer connection is in fact the server or just a valid client certificate
         # One of them is by setting this option to True, which will order the ssl module to ensure that the
         # certificate on the response's Subject's COMMON_NAME property equals the defined server hostname.
         # The other method is by setting this option to False and allow the peer id extraction path to fail.
-        # Either should do the trick. If you prefer option one, you can also opt to keep the second, as a way to double 
+        # Either should do the trick. If you prefer option one, you can also opt to keep the second, as a way to double
         # check the server certificate.
         context.check_hostname = True
-    except Exception as e:
-        print(f"❌ Failed to set up SSL context.")
+    except Exception:
+        print("❌ Failed to set up SSL context.")
         traceback.print_exc()
         sys.exit(1)
 
@@ -83,13 +84,13 @@ def main():
             with context.wrap_socket(sock, server_hostname="SSI Vault Server") as ssock:
                 print(f"✅ Connected securely to 127.0.0.1:{port}")
                 print(f"Socket Version: {ssock.version()}")
-                
+
                 peerCert = ssock.getpeercert(binary_form=True)
                 if peerCert:
                     peerCertObj = x509.load_der_x509_certificate(peerCert)
                     serverId = extractSubjectId(peerCertObj)
 
-                    if (serverId == None or serverId != SERVER_ID):
+                    if (serverId is None or serverId != SERVER_ID):
                         print("❌ Invalid Server ID.")
                         raise Exception
 
@@ -102,24 +103,27 @@ def main():
                     command = ""
                     try:
                         command = input("> ").strip()
-                        if not command: continue
+                        if not command:
+                            continue
+
                         readline.add_history(command)
                     except KeyboardInterrupt:
-                        if (not doubleSIGINT): 
+                        if (not doubleSIGINT):
                             print("To exit, press CTRL + C again or type 'exit'.")
                             doubleSIGINT = True
                             continue
-                        else: 
+                        else:
                             print()
                             break
                     except EOFError:
                         break
-                    
+
                     doubleSIGINT = False
                     args = shlex.split(command)
                     print(f"Arguments: {args}")
 
-                    if args[0] == "exit": break
+                    if args[0] == "exit":
+                        break
 
                     try:
                         # TODO: Actually process packets to and from the server.
@@ -127,20 +131,21 @@ def main():
                         ssock.send(bytes(command, "utf-8"))
                         res = ssock.recv(1024)
                         print(f"--> {res}")
-                    except Exception as e:
+                    except Exception:
                         print("❌ Error on packet serialization.")
                         traceback.print_exc()
                         continue
 
                 ssock.close()
     except ssl.SSLCertVerificationError:
-        print(f"❌ Peer is not a valid server.")
-    except Exception as e:
-        print(f"❌ Error on client socket.")
+        print("❌ Peer is not a valid server.")
+    except Exception:
+        print("❌ Error on client socket.")
         traceback.print_exc()
         sys.exit(1)
 
     print("\nExiting...")
+
 
 if __name__ == "__main__":
     main()
