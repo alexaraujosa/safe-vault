@@ -10,6 +10,7 @@ class Config:
             # Load the configuration file
             self.load()
         except FileNotFoundError:
+            print(f"Config file not found at {self.config_path}. Initializing a new config.")
             # If the file does not exist, create a new config
             self.save({
                 "users": {},
@@ -31,6 +32,7 @@ class Config:
 
     def load(self):
         # Load the configuration from the file
+        print(f"Loading config from {self.config_path}")
         with open(self.config_path, 'r', encoding='utf-8') as f:
             self.config = json.load(f)
 
