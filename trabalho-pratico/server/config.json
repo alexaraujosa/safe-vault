@@ -3,10 +3,10 @@
         "user1": {
             "created": "12/12/2025",
             "groups": [
-                "grupo1"
+                "group1"
             ],
             "own_groups": [
-                "grupo1"
+                "group1"
             ],
             "moderator_groups": [],
             "files": {
