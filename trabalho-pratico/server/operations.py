@@ -107,6 +107,15 @@ class Operations:
     # User Operations
     ###
 
+    def authenticate_user(self,
+                          username: str) -> None:
+        
+        try:
+            self.create_user(username)
+        except Exception:
+            pass
+
+
     def create_user(self,
                     username: str) -> str:
 

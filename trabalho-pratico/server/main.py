@@ -43,7 +43,8 @@ def handleClient(operations, conn: ssl.SSLSocket, addr):
                 conn.close()
                 return
 
-            print(f"✅ Authenticated User: {user_id}")
+            operations.authenticate_user(user_id)
+            print(f"✅ Authenticated user: {user_id}")
 
         _died = False
         while True:
