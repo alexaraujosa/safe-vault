@@ -55,9 +55,9 @@ def main():
             print(f"❌ Invalid file: {file}.")
             sys.exit(1)
 
-    # Extract private key and public key from PKCS#12 file
+    # Extract public key and private key from PKCS#12 file
     try:
-        client_public_key, client_private_key = RSA.load_keys_from_p12(p12_file)
+        client_private_key, client_public_key = RSA.load_keys_from_p12(p12_file)
     except Exception as e:
         print(f"❌ Failed to load PKCS#12 file: {e}")
         sys.exit(1)
