@@ -30,9 +30,12 @@ class CommandType(Enum):
     GROUP_LIST_REQUEST        = 20
     GROUP_ADD_REQUEST         = 21
     EXIT_REQUEST              = 22
+    NEED_CONFIRMATION         = 23
+    CONFIRM                   = 24
+    ABORT                     = 25
 
-    DETAILS_REQUEST           = 23
-    # DETAILS_RESPONSE          = 24
+    DETAILS_REQUEST           = 26
+    # DETAILS_RESPONSE          = 27
 
 
 def create_packet(p_type: int, payload: dict) -> bytes:
@@ -43,12 +46,25 @@ def create_packet(p_type: int, payload: dict) -> bytes:
     })
 
 
+def create_success_packet(message: str = None) -> bytes:
+    payload = {"message": message} if message else {}
+    return create_packet(CommandType.SUCCESS.value, payload)
+
+
 def create_error_packet(message: str) -> bytes:
     return create_packet(CommandType.ERROR.value, {"message": message})
 
 
-def create_success_packet(message: str) -> bytes:
-    return create_packet(CommandType.SUCCESS.value, {"message": message})
+def create_need_confirmation_packet(message: str) -> bytes:
+    return create_packet(CommandType.NEED_CONFIRMATION.value, {"message": message})
+
+
+def create_confirm_packet() -> bytes:
+    return create_packet(CommandType.CONFIRM.value, {})
+
+
+def create_abort_packet() -> bytes:
+    return create_packet(CommandType.ABORT.value, {})
 
 
 def decode_packet(packet_data: bytes) -> dict:
