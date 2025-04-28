@@ -4,6 +4,10 @@ from common.validation import validate_params
 from common.packet import (
     CommandType,
     create_packet,
+    # create_success_packet,
+    # create_error_packet,
+    create_confirm_packet,
+    create_abort_packet,
     decode_packet
 )
 
@@ -152,7 +156,7 @@ def process_command(client_socket,  # TODO add type
 
                     # Send group deletion request to server
                     packet = create_packet(CommandType.GROUP_DELETE_REQUEST.value,
-                                           {"group_id": group_id})
+                                           {"id": group_id})
                     server_socket.send(packet)
 
                     # Await server boolean response
@@ -176,7 +180,8 @@ def process_command(client_socket,  # TODO add type
                     #    "permissions": permissions,
                     #    "group_key": encrypted_group_key
                     # }
-                case "delete-user":
+
+                case "delete-user":  # TODO test this
                     if len(args) != 4:
                         raise ValueError(f"Invalid arguments.\nUsage: {usage._group_delete_user}")
                     validate_params(group_id=(group_id := args[2]),
@@ -184,23 +189,23 @@ def process_command(client_socket,  # TODO add type
 
                     # Send user group deletion request to server
                     packet = create_packet(CommandType.GROUP_DELETE_USER_REQUEST.value,
-                                           {"group_id": group_id,
-                                            "user_id": user_id})
+                                           {"id": group_id,
+                                            "user_id": user_id,
+                                            "confirm": False})
                     server_socket.send(packet)
 
-                    # Await server response (CONFIRM_REQUEST | SUCCESS | ERROR)
+                    # Await server response (NEED_CONFIRMATION | SUCCESS | ERROR)
                     response = decode_packet(server_socket.recv())
-                    if response.get("type") == CommandType.CONFIRM_REQUEST.value:
+
+                    if response.get("type") == CommandType.NEED_CONFIRMATION.value:
                         print(response.get("payload").get("message"))
                         confirm = input("Do you want to continue? [y/N] ")
                         if confirm.lower() == "y":
-                            packet = create_packet(CommandType.GROUP_DELETE_USER_REQUEST.value,
-                                                   {"group_id": group_id,
-                                                    "user_id": user_id,
-                                                    "confirm": True})
-                            server_socket.send(packet)
+                            server_socket.send(create_confirm_packet())
                         else:
+                            server_socket.send(create_abort_packet())
                             print("Operation cancelled.")
+                            return
 
                     handle_boolean_response(response)
 
@@ -209,13 +214,10 @@ def process_command(client_socket,  # TODO add type
                         raise ValueError(f"Invalid arguments.\nUsage: {usage._group_list}")
 
                     # Send group list request to server
-                    packet = create_packet(CommandType.GROUP_LIST_REQUEST.value,
-                                           {"group_id": group_id})
+                    packet = create_packet(CommandType.GROUP_LIST_REQUEST.value, {})
                     server_socket.send(packet)
 
-                    # Await server response (group_list | ERROR)
-                    # TODO Server: add the group_list to the payload.message field
-                    # this way no if statement is needed here
+                    # Await server response (SUCCESS | ERROR)
                     response = decode_packet(server_socket.recv())
                     print(response.get("payload").get("message"))
 
@@ -236,5 +238,10 @@ def process_command(client_socket,  # TODO add type
                 case _:
                     raise ValueError(f"Invalid command: group '{group_command}'\n"
                                      f"{usage._group}")
+
+                # TODO change user permissions
+                # TODO delete-file
+                # TODO add-moderator
+                # TODO delete-moderator
         case _:
             raise ValueError(f"Invalid command: '{command}'\n{usage._full}")
