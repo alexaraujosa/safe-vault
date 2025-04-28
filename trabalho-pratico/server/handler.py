@@ -46,7 +46,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 group_key  = payload.get("key")
                 try:
                     group_id = operations.create_group(current_user_id, group_name, group_key)
-                    conn.send(create_success_packet(message=f"Group ID: {group_id}."))
+                    conn.send(create_success_packet(message=f"Group ID: {group_id}"))
                 except Exception as e:
                     conn.send(create_error_packet(str(e)))
 
