@@ -77,3 +77,11 @@ class InvalidParameter(Exception):
     def __init__(self, name: str):
         self.message = f"Unsupported parameter: {name}."
         super().__init__(self.message)
+
+
+class NeedConfirmation(Exception):
+    """Raised when a user needs to confirm an action."""
+
+    def __init__(self, message: str):
+        self.message = message
+        super().__init__(self.message)
