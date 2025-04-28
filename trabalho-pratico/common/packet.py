@@ -4,8 +4,7 @@ from enum   import Enum
 PACKET_VERSION = 1
 
 
-# TODO add replace, details, revoke, read, etc
-# TODO remove some unessary responses
+# TODO remove some unnecessary responses and update values sequence
 class CommandType(Enum):
     SUCCESS                   = 0
     ERROR                     = 1
