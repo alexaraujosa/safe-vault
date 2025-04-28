@@ -17,6 +17,7 @@ _group_add_user    = "group add-user <group-id> <user-id> <permissions>"
 _group_delete_user = "group delete-user <group-id> <user-id>"
 _group_list        = "group list"
 _group_add         = "group add <group-id> <file-path>"
+_group_delete_file = "group delete <group-id> <file-id>"
 
 _group = f"""
 Group commands usage:
@@ -26,6 +27,7 @@ Group commands usage:
     {_group_delete_user}
     {_group_list}
     {_group_add}
+    {_group_delete_file}
 """
 
 # Full usage
