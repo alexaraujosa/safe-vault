@@ -391,7 +391,7 @@ class Operations:
         # Add the group to the user's groups
         self.config["users"][current_user_id]["groups"].append(group_name)
 
-        return group_name  # group_id TODO caller must include message in SUCCESS packet
+        return group_name
 
     def delete_group(self,
                      current_user_id: str,
@@ -488,8 +488,9 @@ class Operations:
     # INFO if the user is a moderator, he will also be removed from the moderators list
     # INFO if the user being removed is the owner of any files in the group,
     # the files will be deleted from the group but kept in that user's vault
-    # TODO before calling this function check if `config["groups"][group_id]["files"][user_id]`
-    # exists if so send a warning to the client saying that the files will be deleted
+    # INFO This function check if `config["groups"][group_id]["files"][user_id]`
+    # exists if so raise NeedConfirmation exception since group members will
+    # loose access to the files
     def remove_user_from_group(self,
                                current_user_id: str,
                                group_id: str,
