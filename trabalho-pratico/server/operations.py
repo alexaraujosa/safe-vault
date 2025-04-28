@@ -10,7 +10,8 @@ from common.exceptions import (
     GroupNotFound,
     UserNotMemberOfGroup,
     UserNotModeratorOfGroup,
-    FileNotFoundOnVault
+    FileNotFoundOnVault,
+    NeedConfirmation
 )
 
 # Considerations:
@@ -492,7 +493,8 @@ class Operations:
     def remove_user_from_group(self,
                                current_user_id: str,
                                group_id: str,
-                               user_id: str) -> None:
+                               user_id: str,
+                               confirm: bool) -> None:
 
         validate_params(user_ids=[current_user_id, user_id],
                         group_id=group_id)
@@ -520,6 +522,11 @@ class Operations:
         # Check if the user is not a member of the group
         if user_id not in group["members"]:
             raise UserNotMemberOfGroup(user_id, group_id)
+
+        # Check if there were any files owned by the user being removed
+        if user_id in group["files"] and not confirm:
+            raise NeedConfirmation(f"User {user_id} has files in group {group_id}.\n"
+                                   "Please confirm the deletion of the files.")
 
         # Delete the user files from the group if any
         if user_id in group["files"]:
