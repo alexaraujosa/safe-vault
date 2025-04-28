@@ -1,40 +1,40 @@
 from bson   import BSON
-from enum   import Enum
+from enum   import Enum, auto
 
 PACKET_VERSION = 1
 
 
-# TODO remove some unnecessary responses and update values sequence
+# TODO remove some unnecessary responses
 class CommandType(Enum):
-    SUCCESS                   = 0
-    ERROR                     = 1
-    ADD_REQUEST               = 2
-    ADD_RESPONSE              = 3
-    LIST_REQUEST              = 4
-    LIST_RESPONSE             = 5
-    SHARE_REQUEST             = 6
-    SHARE_RESPONSE            = 7
-    DELETE_REQUEST            = 8
-    DELETE_RESPONSE           = 9
-    REPLACE_REQUEST           = 10
-    REPLACE_RESPONSE          = 11
-    REVOKE_REQUEST            = 12
-    REVOKE_RESPONSE           = 13
-    READ_REQUEST              = 14
-    READ_RESPONSE             = 15
-    GROUP_CREATE_REQUEST      = 16
-    GROUP_DELETE_REQUEST      = 17
-    GROUP_ADD_USER_REQUEST    = 18
-    GROUP_DELETE_USER_REQUEST = 19
-    GROUP_LIST_REQUEST        = 20
-    GROUP_ADD_REQUEST         = 21
-    EXIT_REQUEST              = 22
-    NEED_CONFIRMATION         = 23
-    CONFIRM                   = 24
-    ABORT                     = 25
+    SUCCESS                   = auto()
+    ERROR                     = auto()
+    ADD_REQUEST               = auto()
+    ADD_RESPONSE              = auto()
+    LIST_REQUEST              = auto()
+    LIST_RESPONSE             = auto()
+    SHARE_REQUEST             = auto()
+    SHARE_RESPONSE            = auto()
+    DELETE_REQUEST            = auto()
+    DELETE_RESPONSE           = auto()
+    REPLACE_REQUEST           = auto()
+    REPLACE_RESPONSE          = auto()
+    REVOKE_REQUEST            = auto()
+    REVOKE_RESPONSE           = auto()
+    READ_REQUEST              = auto()
+    READ_RESPONSE             = auto()
+    GROUP_CREATE_REQUEST      = auto()
+    GROUP_DELETE_REQUEST      = auto()
+    GROUP_ADD_USER_REQUEST    = auto()
+    GROUP_DELETE_USER_REQUEST = auto()
+    GROUP_LIST_REQUEST        = auto()
+    GROUP_ADD_REQUEST         = auto()
+    EXIT_REQUEST              = auto()
+    NEED_CONFIRMATION         = auto()
+    CONFIRM                   = auto()
+    ABORT                     = auto()
 
-    DETAILS_REQUEST           = 26
-    # DETAILS_RESPONSE          = 27
+    DETAILS_REQUEST           = auto()
+    DETAILS_RESPONSE          = auto()
 
 
 def create_packet(p_type: int, payload: dict) -> bytes:
@@ -77,13 +77,13 @@ def decode_packet(packet_data: bytes) -> dict:
     # Verify packet version
     if packet.get("version") != PACKET_VERSION:
         raise ValueError("Invalid packet version.\n"
-                         f"Expected '{PACKET_VERSION}', got '{packet.get("version")}'.")
+                         f"Expected '{PACKET_VERSION}', got '{packet.get('version')}'.")
 
     # Verify command type
     try:
         CommandType(packet.get("type"))
     except ValueError:
         raise ValueError("Invalid packet command type.\n"
-                         f"Got: {packet.get("type")}")
+                         f"Got: {packet.get('type')}")
 
     return packet
