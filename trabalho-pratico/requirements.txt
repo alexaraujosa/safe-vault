@@ -1,4 +1,5 @@
 shlex
 readline
 cryptography
+json
 bson
