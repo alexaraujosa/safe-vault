@@ -20,19 +20,16 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
         payload = packet.get("payload")
         match packet.get("type"):
             case CommandType.ADD_REQUEST.value:
+                content  = payload.get("content")
+                file_key = payload.get("key")
+                size     = payload.get("size")
+                filename = payload.get("filename")
                 try:
-                    enc_content = payload.get("content")
-                    file_key = base64.b64encode(payload.get("key")).decode("utf-8")
-                    size = BSON.decode(payload.get("metadata")).get("size")
-                    filename = BSON.decode(payload.get("metadata")).get("filename")
-
-                    operations.add_file_to_user(current_user_id, filename, enc_content, file_key, size)
-
-                    response = create_success_packet(f"File '{filename}' added successfully to the vault.")
+                    file_key = base64.b64encode(file_key).decode("utf-8")
+                    operations.add_file_to_user(current_user_id, filename, content, file_key, size)
+                    conn.send(create_success_packet(f"File '{filename}' added successfully to the vault."))
                 except Exception as e:
-                    response = create_error_packet(str(e))
-                finally:
-                    conn.send(response)
+                    conn.send(create_error_packet(str(e)))
 
             case CommandType.LIST_REQUEST.value:
                 try:
@@ -42,82 +39,67 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                         payload = operations.list_user_group_files(current_user_id, group_id)
                     elif not payload:
                         payload = operations.list_user_personal_files(current_user_id)
-                    
-                    response = create_packet(CommandType.LIST_RESPONSE.value,
-                                             payload)
+
+                    conn.send(create_packet(CommandType.LIST_RESPONSE.value, payload))
                 except Exception as e:
-                    response = create_error_packet(str(e))
-                finally:
-                    conn.send(response)
+                    conn.send(create_error_packet(str(e)))
 
             case CommandType.SHARE_REQUEST_VALIDATION.value:
+                file_id     = payload.get("file_id")
+                user_id     = payload.get("user_id")
+                permissions = payload.get("permissions")
                 try:
-                    file_id = payload.get("file_id")
-                    user_id = payload.get("user_id")
-                    permissions = payload.get("permissions")
-
-                    share_user_pub_key, file_key = operations.validate_share_user_file(current_user_id, file_id, user_id, permissions)
+                    public_key, file_key = operations.validate_share_user_file(current_user_id, file_id, user_id, permissions)
 
                     intermediate_packet = create_packet(CommandType.SHARE_RESPONSE_VALIDATION.value,
-                                                        {"public_key": base64.b64decode(share_user_pub_key),
+                                                        {"public_key": base64.b64decode(public_key),
                                                          "file_symmetric_key": base64.b64decode(file_key)})
-                    
                     conn.send(intermediate_packet)
 
                     # Await client response with encrypted file key
                     client_response_packet = decode_packet(conn.recv())
 
-                    file_key = base64.b64encode(client_response_packet.get("payload").get("key")).decode("utf-8")
+                    file_key = client_response_packet.get("payload").get("key")
+                    file_key = base64.b64encode(file_key).decode("utf-8")
                     operations.share_user_file(current_user_id, file_id, user_id, permissions, file_key)
 
-                    response = create_success_packet(f"Successfully shared file '{file_id}' with user '{user_id}'.")
-
+                    conn.send(create_success_packet(f"Successfully shared file '{file_id}' with user '{user_id}'."))
                 except Exception as e:
-                    response = create_error_packet(str(e))
-                finally: 
-                    conn.send(response)
+                    conn.send(create_error_packet(str(e)))
 
             case CommandType.DELETE_REQUEST.value:
+                file_id = payload.get("file_id")
                 try:
-                    file_id = packet.get("payload")["file_id"]
                     operations.delete_file(current_user_id, file_id)
-                    response = create_success_packet(f"Successfully deleted file '{file_id}'.")
+                    conn.send(create_success_packet(f"Successfully deleted file '{file_id}'."))
                 except Exception as e:
-                    response = create_error_packet(str(e))
-                finally:
-                    conn.send(response)
-                    
+                    conn.send(create_error_packet(str(e)))
+
             case CommandType.REPLACE_REQUEST_VALIDATION.value:
+                file_id = payload.get("file_id")
                 try:
-                    file_id = payload.get("file_id")
                     operations.validate_replace_file(file_id)
                 except Exception as e:
-                    response = create_error_packet(str(e))
-                finally:
-                    conn.send(response)
+                    conn.send(create_error_packet(str(e)))
 
             case CommandType.DETAILS_REQUEST.value:
+                file_id = payload.get("file_id")
                 try:
-                    file_id = packet.get("payload")["file_id"]
                     details = operations.file_details(current_user_id, file_id)
-                    response = create_packet(CommandType.DETAILS_RESPONSE.value,
-                                             details)
+                    conn.send(create_packet(CommandType.DETAILS_RESPONSE.value, details))
                 except Exception as e:
-                    response = create_error_packet(str(e))
-                finally:
-                    conn.send(response)
-                
+                    conn.send(create_error_packet(str(e)))
+
             case CommandType.REVOKE_REQUEST.value:
+                file_id = payload.get("file_id")
+                user_id = payload.get("user_id")
                 try:
-                    file_id = packet.get("payload")["file_id"]
-                    user_id = packet.get("payload")["user_id"]
                     operations.revoke_user_file_permissions(current_user_id, file_id, user_id)
-                    response = create_success_packet(f"Successfully revoked permissions of user '{user_id} on file {file_id}'.")
+                    conn.send(create_success_packet(f"Successfully revoked permissions of user "
+                                                    f"'{user_id} on file {file_id}'."))
                 except Exception as e:
-                    response = create_error_packet(str(e))
-                finally:
-                    conn.send(response)
-                    
+                    conn.send(create_error_packet(str(e)))
+
             case CommandType.READ_REQUEST.value:
                 # TODO read
                 pass
@@ -125,6 +107,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 group_name = payload.get("name")
                 group_key  = payload.get("key")
                 try:
+                    group_key = base64.b64encode(group_key).decode("utf-8")
                     group_id = operations.create_group(current_user_id, group_name, group_key)
                     conn.send(create_success_packet(message=f"Group ID: {group_id}"))
                 except Exception as e:
@@ -138,14 +121,34 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 except Exception as e:
                     conn.send(create_error_packet(str(e)))
 
+            case CommandType.INIT_GROUP_ADD_USER_REQUEST.value:
+                group_id = payload.get("group_id")
+                user_id  = payload.get("user_id")
+                try:
+                    group_key, user_public_key = operations.init_add_user_to_group(current_user_id, group_id, user_id)
+                    server_response = create_packet(CommandType.INIT_GROUP_ADD_USER_RESPONSE.value,
+                                                    {"group_key": base64.b64decode(group_key),
+                                                     "public_key": base64.b64decode(user_public_key)})
+                    conn.send(server_response)
+                except Exception as e:
+                    conn.send(create_error_packet(str(e)))
+
             case CommandType.GROUP_ADD_USER_REQUEST.value:
-                # TODO group add-user
-                pass
+                group_id    = payload.get("group_id")
+                user_id     = payload.get("user_id")
+                permissions = payload.get("permissions")
+                group_key   = payload.get("group_key")
+                try:
+                    group_key = base64.b64encode(group_key).decode("utf-8")
+                    message = operations.add_user_to_group(current_user_id, group_id, user_id, permissions, group_key)
+                    conn.send(create_success_packet(message=message))
+                except Exception as e:
+                    conn.send(create_error_packet(str(e)))
+
             case CommandType.GROUP_DELETE_USER_REQUEST.value:
                 group_id = payload.get("id")
                 user_id  = payload.get("user_id")
                 confirm  = payload.get("confirm", False)
-
                 try:
                     operations.remove_user_from_group(current_user_id, group_id, user_id, confirm)
                     conn.send(create_success_packet())
