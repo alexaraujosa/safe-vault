@@ -88,7 +88,7 @@ def process_command(client_socket,  # TODO add type
             response = receive_packet(server_socket)
             handle_boolean_response(response)
 
-        case "list":
+        case "list":  # TODO better output
             rest = args[1:]
             match rest:
                 case []:  # list
@@ -382,7 +382,7 @@ def process_command(client_socket,  # TODO add type
 
                     handle_boolean_response(response)
 
-                case "list":
+                case "list":  # TODO better output
                     if len(args) != 2:
                         raise ValueError(f"Invalid arguments.\nUsage: {usage._group_list}")
 
