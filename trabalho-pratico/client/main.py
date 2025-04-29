@@ -103,6 +103,11 @@ def main():
                         raise Exception
 
                     print(f"✅ Authenticated Server: {serverId}")
+                else:
+                    print("❌ Failed to get peer certificate.")
+                    raise Exception
+
+                # TODO wait server response (USER_ID_ALREADY_EXISTS | SUCCESS)
 
                 setup_readline()
 
