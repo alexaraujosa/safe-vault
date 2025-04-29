@@ -73,7 +73,7 @@ def process_command(client_socket,  # TODO add type
             # Create file master key with AES
             file_key = AES_GCM.generate_key()
 
-            # Encrypt content with master key
+            # Encrypt content with symmetric key
             enc_content = BSON.encode(AES_GCM.encrypt(content, file_key))
 
             # Encrypt file master key with client public key
@@ -183,14 +183,36 @@ def process_command(client_socket,  # TODO add type
 
             filename = os.path.basename(file_path)
             try:
+                with open(file_path, "rb") as file:
+                    new_content = file.read()
+
                 packet = create_packet(CommandType.REPLACE_REQUEST_VALIDATION.value,
                                        {"file_id": file_id})
                 server_socket.send(packet)
 
                 # Await server response
                 response_validation = decode_packet(server_socket.recv())
-                # TODO To continue
 
+                if response_validation.get("type") == CommandType.REPLACE_RESPONSE_VALIDATION.value:
+                    user_file_sym_key_bytes = response_validation.get("payload").get("key")
+                    
+                    # Decrypt file symmetric key
+                    file_symmetric_key = RSA.decrypt(user_file_sym_key_bytes, client_private_key)
+
+                    # Encrypt new file contents
+                    content_enc = AES_GCM.encrypt(new_content, file_symmetric_key)
+                    packet_replace = create_packet(CommandType.REPLACE_REQUEST_WITH_CONTENT.value,
+                                                   {"content": BSON.encode(content_enc),
+                                                    "size": len(new_content)})
+                    
+                    server_socket.send(packet_replace)
+
+                    # Await server response
+                    response = decode_packet(server_socket.recv())
+                    handle_boolean_response(response)
+                else:
+                    handle_boolean_response(response_validation)
+                    
             except Exception as e:
                 print(e)
 
@@ -210,7 +232,8 @@ def process_command(client_socket,  # TODO add type
             # Await server response
             response = decode_packet(server_socket.recv())
             if response.get("type") == CommandType.DETAILS_RESPONSE.value:
-                print(response.get("payload")["details"])
+                for k, v in response.get("payload").items():
+                    print(f"{k}: {v}")
             else:
                 handle_boolean_response(response)
 
@@ -233,7 +256,27 @@ def process_command(client_socket,  # TODO add type
                 raise ValueError(f"Invalid arguments.\nUsage: {usage._read}")
             validate_params(file_id=(file_id := args[1]))
 
-            # TODO read
+            packet = create_packet(CommandType.READ_REQUEST.value,
+                                   {"file_id": file_id})
+            
+            server_socket.send(packet)
+
+            # Await server response
+            response = decode_packet(server_socket.recv())
+            if response.get("type") == CommandType.READ_RESPONSE.value:
+                content_enc = BSON.decode(response.get("payload").get("content"))
+                file_symmetric_key_enc = response.get("payload").get("key")
+
+                # Decrypt file symmetric key
+                file_symmetric_key = RSA.decrypt(file_symmetric_key_enc, client_private_key)
+
+                # Decrypt file content
+                content = AES_GCM.decrypt(content_enc.get("ciphertext"), file_symmetric_key, content_enc.get("iv"), content_enc.get("tag"))
+
+                print(f"file name: {file_id}")
+                print(f"content:\n{content.decode()}")
+            else:
+                handle_boolean_response(response)
         case "group":
             if len(args) < 2:
                 raise ValueError(f"Invalid arguments.\nUsage: {usage._group}")
