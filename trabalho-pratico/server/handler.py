@@ -1,10 +1,12 @@
 import ssl
 import json
+import base64
+from bson import BSON
 from server.operations import Operations
 from common.exceptions import NeedConfirmation
 from common.packet import (
     CommandType,
-    # create_packet,
+    create_packet,
     create_success_packet,
     create_error_packet,
     create_need_confirmation_packet,
@@ -18,26 +20,104 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
         payload = packet.get("payload")
         match packet.get("type"):
             case CommandType.ADD_REQUEST.value:
-                # TODO add
-                pass
+                try:
+                    enc_content = payload.get("content")
+                    file_key = base64.b64encode(payload.get("key")).decode("utf-8")
+                    size = BSON.decode(payload.get("metadata")).get("size")
+                    filename = BSON.decode(payload.get("metadata")).get("filename")
+
+                    operations.add_file_to_user(current_user_id, filename, enc_content, file_key, size)
+
+                    response = create_success_packet(f"File '{filename}' added successfully to the vault.")
+                except Exception as e:
+                    response = create_error_packet(str(e))
+                finally:
+                    conn.send(response)
+
             case CommandType.LIST_REQUEST.value:
-                # TODO list
-                pass
-            case CommandType.SHARE_REQUEST.value:
-                # TODO share
-                pass
+                try:
+                    if user_id := payload.get("user_id"):  # list -u <user_id>
+                        payload = operations.list_user_shared_files(current_user_id, user_id)
+                    elif group_id := payload.get("group_id"):  # list -g <group_id>
+                        payload = operations.list_user_group_files(current_user_id, group_id)
+                    elif not payload:
+                        payload = operations.list_user_personal_files(current_user_id)
+                    
+                    response = create_packet(CommandType.LIST_RESPONSE.value,
+                                             payload)
+                except Exception as e:
+                    response = create_error_packet(str(e))
+                finally:
+                    conn.send(response)
+
+            case CommandType.SHARE_REQUEST_VALIDATION.value:
+                try:
+                    file_id = payload.get("file_id")
+                    user_id = payload.get("user_id")
+                    permissions = payload.get("permissions")
+
+                    share_user_pub_key, file_key = operations.validate_share_user_file(current_user_id, file_id, user_id, permissions)
+
+                    intermediate_packet = create_packet(CommandType.SHARE_RESPONSE_VALIDATION.value,
+                                                        {"public_key": base64.b64decode(share_user_pub_key),
+                                                         "file_symmetric_key": base64.b64decode(file_key)})
+                    
+                    conn.send(intermediate_packet)
+
+                    # Await client response with encrypted file key
+                    client_response_packet = decode_packet(conn.recv())
+
+                    file_key = base64.b64encode(client_response_packet.get("payload").get("key")).decode("utf-8")
+                    operations.share_user_file(current_user_id, file_id, user_id, permissions, file_key)
+
+                    response = create_success_packet(f"Successfully shared file '{file_id}' with user '{user_id}'.")
+
+                except Exception as e:
+                    response = create_error_packet(str(e))
+                finally: 
+                    conn.send(response)
+
             case CommandType.DELETE_REQUEST.value:
-                # TODO delete
-                pass
-            case CommandType.REPLACE_REQUEST.value:
-                # TODO replace
-                pass
+                try:
+                    file_id = packet.get("payload")["file_id"]
+                    operations.delete_file(current_user_id, file_id)
+                    response = create_success_packet(f"Successfully deleted file '{file_id}'.")
+                except Exception as e:
+                    response = create_error_packet(str(e))
+                finally:
+                    conn.send(response)
+                    
+            case CommandType.REPLACE_REQUEST_VALIDATION.value:
+                try:
+                    file_id = payload.get("file_id")
+                    operations.validate_replace_file(file_id)
+                except Exception as e:
+                    response = create_error_packet(str(e))
+                finally:
+                    conn.send(response)
+
             case CommandType.DETAILS_REQUEST.value:
-                # TODO details
-                pass
+                try:
+                    file_id = packet.get("payload")["file_id"]
+                    details = operations.file_details(current_user_id, file_id)
+                    response = create_packet(CommandType.DETAILS_RESPONSE.value,
+                                             details)
+                except Exception as e:
+                    response = create_error_packet(str(e))
+                finally:
+                    conn.send(response)
+                
             case CommandType.REVOKE_REQUEST.value:
-                # TODO revoke
-                pass
+                try:
+                    file_id = packet.get("payload")["file_id"]
+                    user_id = packet.get("payload")["user_id"]
+                    operations.revoke_user_file_permissions(current_user_id, file_id, user_id)
+                    response = create_success_packet(f"Successfully revoked permissions of user '{user_id} on file {file_id}'.")
+                except Exception as e:
+                    response = create_error_packet(str(e))
+                finally:
+                    conn.send(response)
+                    
             case CommandType.READ_REQUEST.value:
                 # TODO read
                 pass

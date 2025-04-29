@@ -1,3 +1,7 @@
+import os
+from bson import BSON
+import base64
+from cryptography.hazmat.primitives import serialization
 import client.usage as usage
 from client.encryption import RSA, AES_GCM
 from common.validation import validate_params
@@ -43,15 +47,41 @@ def process_command(client_socket,  # TODO add type
                 raise ValueError(f"Invalid arguments.\nUsage: {usage._add}")
             validate_params(file_path=(file_path := args[1]))
 
-            # TODO Retrieve filename from the file_path (use basename)
-            # TODO use try/except to handle file not found
-            with open(file_path, "rb") as file:
-                content = file.read()
+            filename = os.path.basename(file_path)
+            try:
+                with open(file_path, "rb") as file:
+                    content = file.read()
+                
+                # Create file master key with AES
+                file_key = AES_GCM.generate_key()
 
-            # TODO Encrypt content
+                # Encrypt content with master key
+                enc_content = BSON.encode(AES_GCM.encrypt(content, file_key))
 
-            # TODO Create, encrypt and send packet
-        case "list", *rest:
+                # Encrypt file master key with client public key
+                enc_file_key = RSA.encrypt(file_key, client_public_key)
+
+                metadata = BSON.encode({
+                    "size": len(content),
+                    "filename": filename
+                })
+
+                packet = create_packet(CommandType.ADD_REQUEST.value,
+                                       {"content": enc_content, 
+                                        "key": enc_file_key, 
+                                        "metadata": metadata})
+
+                server_socket.send(packet)
+
+                # Await server response
+                response = decode_packet(server_socket.recv())
+                handle_boolean_response(response)
+
+            except Exception as e:
+                print(e)
+
+        case "list":
+            rest = args[1:]
             match rest:
                 case []:  # list
                     packet = create_packet(CommandType.LIST_REQUEST.value, {})
@@ -69,8 +99,21 @@ def process_command(client_socket,  # TODO add type
                 case _:
                     raise ValueError(f"Invalid arguments.\nUsage: {usage._list}")
 
-            # TODO Encrypt and send packet
-            print(packet)
+            server_socket.send(packet)
+
+            # Await server response
+            response = decode_packet(server_socket.recv())
+            responseType = response.get("type")
+
+            if responseType == CommandType.ERROR.value:
+                print(response.get("payload").get("message"))
+            elif CommandType.LIST_RESPONSE.value:
+                if len(response.get("payload")) == 0:
+                    print("No files found on own vault.")
+                else:
+                    for entry in response.get("payload"):
+                        print(entry)
+
         case "share":
             if len(args) != 4:
                 raise ValueError(f"Invalid arguments.\nUsage: {usage._share}")
@@ -78,13 +121,37 @@ def process_command(client_socket,  # TODO add type
                             user_id=(user_id := args[2]),
                             permissions=(permissions := args[3]))
 
-            packet = create_packet(CommandType.SHARE_REQUEST.value,
+            packet = create_packet(CommandType.SHARE_REQUEST_VALIDATION.value,
                                    {"file_id": file_id,
                                     "user_id": user_id,
                                     "permissions": permissions})
-            # TODO Request user public key from server
-            # TODO Encrypt and send packet
-            print(packet)
+            
+            server_socket.send(packet)
+
+            # Await server response
+            response_validation = decode_packet(server_socket.recv())
+
+            if response_validation.get("type") == CommandType.SHARE_RESPONSE_VALIDATION.value:
+                user_pub_key_bytes = response_validation.get("payload").get("public_key")
+                user_pub_key = serialization.load_pem_public_key(user_pub_key_bytes)
+                file_symmetric_key_enc = response_validation.get("payload").get("file_symmetric_key")
+
+                # Decrypt file symmetric key
+                file_symmetric_key = RSA.decrypt(file_symmetric_key_enc, client_private_key)
+
+                # Encrypt file symmetric key with share user public key
+                share_user_file_symmetric_key_enc = RSA.encrypt(file_symmetric_key, user_pub_key)
+                packet_share = create_packet(CommandType.SHARE_REQUEST_WITH_KEY.value, {"key": share_user_file_symmetric_key_enc})
+
+                server_socket.send(packet_share)
+
+                # Await server response
+                response_share = decode_packet(server_socket.recv())
+
+                handle_boolean_response(response_share)
+            else:
+                handle_boolean_response(response_validation)
+
         case "delete":
             if len(args) != 2:
                 raise ValueError(f"Invalid arguments.\nUsage: {usage._delete}")
@@ -92,11 +159,32 @@ def process_command(client_socket,  # TODO add type
 
             packet = create_packet(CommandType.DELETE_REQUEST.value,
                                    {"file_id": file_id})
+            
+            server_socket.send(packet)
+
+            # Await server response
+            response = decode_packet(server_socket.recv())
+            handle_boolean_response(response)
+
         case "replace":
             if len(args) != 3:
                 raise ValueError(f"Invalid arguments.\nUsage: {usage._replace}")
             validate_params(file_id=(file_id := args[1]),
                             file_path=(file_path := args[2]))
+
+            filename = os.path.basename(file_path)
+            try:
+                packet = create_packet(CommandType.REPLACE_REQUEST_VALIDATION.value,
+                                       {"file_id": file_id})
+                
+                server_socket.send(packet)
+
+                # Await server response
+                response_validation = decode_packet(server_socket.recv())
+                # TODO To continue
+                
+            except Exception as e:
+                print(e)
 
             # TODO use try/except to handle file not found
             with open(file_path, "rb") as file:
@@ -108,14 +196,33 @@ def process_command(client_socket,  # TODO add type
                 raise ValueError(f"Invalid arguments.\nUsage: {usage._details}")
             validate_params(file_id=(file_id := args[1]))
 
-            # TODO details
+            packet = create_packet(CommandType.DETAILS_REQUEST.value,
+                                   {"file_id": file_id})
+            
+            server_socket.send(packet)
+
+            # Await server response
+            response = decode_packet(server_socket.recv())
+            if response.get("type") == CommandType.DETAILS_RESPONSE.value:
+                print(response.get("payload")["details"])
+            else:
+                handle_boolean_response(response)
+
         case "revoke":
             if len(args) != 3:
                 raise ValueError(f"Invalid arguments.\nUsage: {usage._revoke}")
             validate_params(file_id=(file_id := args[1]),
                             user_id=(user_id := args[2]))
 
-            # TODO revoke
+            packet = create_packet(CommandType.REVOKE_REQUEST.value,
+                                   {"file_id": file_id, "user_id": user_id})
+            
+            server_socket.send(packet)
+
+            # Await server response
+            response = decode_packet(server_socket.recv())
+            handle_boolean_response(response)
+            
         case "read":
             if len(args) != 2:
                 raise ValueError(f"Invalid arguments.\nUsage: {usage._read}")

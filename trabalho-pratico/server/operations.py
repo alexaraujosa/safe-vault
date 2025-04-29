@@ -1,5 +1,6 @@
 import os
 import datetime
+from bson import BSON
 from common.validation import validate_params
 from common.exceptions import (
     PermissionDenied,
@@ -36,7 +37,7 @@ def get_current_timestamp() -> str:
     return datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")
 
 
-def write_file(file_path: str, file_contents: bytes) -> None:
+def write_file(file_path: str, file_contents: BSON) -> None:
     """
     Atomically write the file contents to the given file path.
 
@@ -191,9 +192,9 @@ class Operations:
         if shared_by_user_id not in shared_files:
             raise SharedUserNotFound(current_user_id, shared_by_user_id)
 
-        # Return the list with the (filename, permissions) tuples
+        # Return the list with the (fileid, permissions) tuples
         return [
-            (filename, shared_files[shared_by_user_id][filename]["permissions"])
+            (f"{shared_by_user_id}:{filename}", shared_files[shared_by_user_id][filename]["permissions"])
             for filename in shared_files[shared_by_user_id]
         ]
 
@@ -218,12 +219,37 @@ class Operations:
             # List all files in the group
             for file_owner in group_files:
                 for filename in group_files[file_owner]:
-                    files.append((filename, permissions))
+                    files.append((f"{file_owner}:{filename}", permissions))
         else:
             raise UserNotMemberOfGroup(current_user_id, group_id)
 
         return files
 
+    def validate_share_user_file(self,
+                                 current_user_id: str,
+                                 file_id: str,
+                                 user_id_to_share: str,
+                                 permissions: str) -> tuple[str, str]:
+        validate_params(user_ids=[current_user_id, user_id_to_share],
+                file_id=file_id,
+                permissions=permissions)
+        self.user_exists(current_user_id)
+        self.user_exists(user_id_to_share)
+
+        file_owner_id, _, file_name = file_id.partition(":")
+        self.user_exists(file_owner_id)
+        self.file_exists(current_user_id, file_name)
+
+        # Check if the user being shared is not the owner
+        if user_id_to_share == file_owner_id:
+            raise PermissionDenied(f"User {user_id_to_share} is the owner of file {file_id}.")
+
+        # Check if the current user is the owner of the file
+        if current_user_id != file_owner_id:
+            raise PermissionDenied(f"User {current_user_id} is not the owner of file {file_id}.")
+
+        return self.config["users"][user_id_to_share]["public_key"], self.config["users"][current_user_id]["files"][file_name]["key"]
+        
     # INFO before calling this function the server must send the shared user public key
     # so the client returns us the encrypted symmetric key for that user receiving the share
     def share_user_file(self,
@@ -816,6 +842,36 @@ class Operations:
             "file_contents": file_contents,
             "key": key
         }
+    
+    def validate_replace_file(self,
+                              current_user_id: str,
+                              file_id: str) -> None:
+        validate_params(user_id=current_user_id,
+                file_id=file_id)
+        self.user_exists(current_user_id)
+
+        # Extract the user and file name from the file ID
+        file_owner_id, _, file_name = file_id.partition(":")
+        self.user_exists(file_owner_id)
+        self.file_exists(file_owner_id, file_name)
+
+        file_acl = self.config["users"][file_owner_id]["files"][file_name]["acl"]
+
+        # Determine if the current user can replace the file, meaning
+        # he is the owner, a shared user with write permissions or
+        # a member with write permissions of a group with that file
+        if current_user_id == file_owner_id:
+            return self.config["users"][file_owner_id]["files"][file_name]["key"]
+        elif file_acl["users"].get(current_user_id) == "w":
+            return self.config["users"][current_user_id]["shared_files"][file_owner_id][file_name]["key"]
+        
+        for group_id in file_acl["groups"]:
+            members = self.config["groups"][group_id]["members"]
+            if members.get(current_user_id).get("permissions") == "w":
+                return self.config["groups"][group_id]["members"][current_user_id]["key"]
+
+        raise PermissionDenied(f"User {current_user_id} does not have permission "
+                                   f"to replace the file {file_id}.")
 
     def replace_file(self,
                      current_user_id: str,
