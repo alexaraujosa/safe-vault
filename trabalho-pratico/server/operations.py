@@ -811,7 +811,7 @@ class Operations:
         if is_owner:
             key = self.config["users"][file_owner_id]["files"][file_name]["key"]
         elif is_shared_user:
-            key = self.config["users"][file_owner_id]["shared_files"][current_user_id][file_name]["key"]
+            key = self.config["users"][current_user_id]["shared_files"][file_owner_id][file_name]["key"]
         elif is_group_member:
             for group_id in self.config["users"][file_owner_id]["files"][file_name]["acl"]["groups"]:
                 if current_user_id in self.config["groups"][group_id]["members"]:
@@ -819,12 +819,7 @@ class Operations:
                     break
         else:
             raise PermissionDenied(f"User {current_user_id} cannot access his key "
-                                   f"for the file {file_id}.\n"
-                                   "Debug info:\n"
-                                   f"  File_id: {file_id}\n"
-                                   f"  is_owner: {is_owner}\n"
-                                   f"  is_shared_user: {is_shared_user}\n"
-                                   f"  is_group_member: {is_group_member}")
+                                   f"for the file {file_id}.\n")
 
         # Update the last accessed timestamp
         current_timestamp = get_current_timestamp()
