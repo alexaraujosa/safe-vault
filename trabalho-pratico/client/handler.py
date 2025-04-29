@@ -1,6 +1,5 @@
 import os
 from bson import BSON
-import base64
 from cryptography.hazmat.primitives import serialization
 import client.usage as usage
 from client.encryption import RSA, AES_GCM
@@ -14,6 +13,27 @@ from common.packet import (
     create_abort_packet,
     decode_packet
 )
+
+
+def read_file(file_path: str) -> bytes:
+    """
+    Read file content and return it as bytes.
+
+    Any exception raised will be a ValueError with a message.
+    """
+    try:
+        with open(file_path, "rb") as file:
+            content = file.read()
+    except FileNotFoundError:
+        raise ValueError(f"File '{file_path}' not found.")
+    except PermissionError:
+        raise ValueError(f"Permission denied to read file '{file_path}'.")
+    except IsADirectoryError:
+        raise ValueError(f"File '{file_path}' is a directory.")
+    except Exception as e:
+        raise ValueError(f"Error reading file '{file_path}': {e}")
+
+    return content
 
 
 def handle_boolean_response(response: dict) -> bool:
@@ -48,37 +68,27 @@ def process_command(client_socket,  # TODO add type
             validate_params(file_path=(file_path := args[1]))
 
             filename = os.path.basename(file_path)
-            try:
-                with open(file_path, "rb") as file:
-                    content = file.read()
-                
-                # Create file master key with AES
-                file_key = AES_GCM.generate_key()
+            content = read_file(file_path)
 
-                # Encrypt content with master key
-                enc_content = BSON.encode(AES_GCM.encrypt(content, file_key))
+            # Create file master key with AES
+            file_key = AES_GCM.generate_key()
 
-                # Encrypt file master key with client public key
-                enc_file_key = RSA.encrypt(file_key, client_public_key)
+            # Encrypt content with master key
+            enc_content = BSON.encode(AES_GCM.encrypt(content, file_key))
 
-                metadata = BSON.encode({
-                    "size": len(content),
-                    "filename": filename
-                })
+            # Encrypt file master key with client public key
+            enc_file_key = RSA.encrypt(file_key, client_public_key)
 
-                packet = create_packet(CommandType.ADD_REQUEST.value,
-                                       {"content": enc_content, 
-                                        "key": enc_file_key, 
-                                        "metadata": metadata})
+            packet = create_packet(CommandType.ADD_REQUEST.value,
+                                   {"content": enc_content,
+                                    "key": enc_file_key,
+                                    "size": len(content),
+                                    "filename": filename})
+            server_socket.send(packet)
 
-                server_socket.send(packet)
-
-                # Await server response
-                response = decode_packet(server_socket.recv())
-                handle_boolean_response(response)
-
-            except Exception as e:
-                print(e)
+            # Await server response
+            response = decode_packet(server_socket.recv())
+            handle_boolean_response(response)
 
         case "list":
             rest = args[1:]
@@ -101,18 +111,17 @@ def process_command(client_socket,  # TODO add type
 
             server_socket.send(packet)
 
-            # Await server response
+            # Await server response and print the list results
             response = decode_packet(server_socket.recv())
-            responseType = response.get("type")
-
-            if responseType == CommandType.ERROR.value:
-                print(response.get("payload").get("message"))
+            payload = response.get("payload")
+            if response.get("type") == CommandType.ERROR.value:
+                print(payload.get("message"))
             elif CommandType.LIST_RESPONSE.value:
-                if len(response.get("payload")) == 0:
+                if len(payload) == 0:
                     print("No files found on own vault.")
-                else:
-                    for entry in response.get("payload"):
-                        print(entry)
+
+                for entry in payload:
+                    print(entry)
 
         case "share":
             if len(args) != 4:
@@ -125,7 +134,6 @@ def process_command(client_socket,  # TODO add type
                                    {"file_id": file_id,
                                     "user_id": user_id,
                                     "permissions": permissions})
-            
             server_socket.send(packet)
 
             # Await server response
@@ -141,8 +149,10 @@ def process_command(client_socket,  # TODO add type
 
                 # Encrypt file symmetric key with share user public key
                 share_user_file_symmetric_key_enc = RSA.encrypt(file_symmetric_key, user_pub_key)
-                packet_share = create_packet(CommandType.SHARE_REQUEST_WITH_KEY.value, {"key": share_user_file_symmetric_key_enc})
 
+                # Send share user file symmetric key to server
+                packet_share = create_packet(CommandType.SHARE_REQUEST_WITH_KEY.value,
+                                             {"key": share_user_file_symmetric_key_enc})
                 server_socket.send(packet_share)
 
                 # Await server response
@@ -159,7 +169,6 @@ def process_command(client_socket,  # TODO add type
 
             packet = create_packet(CommandType.DELETE_REQUEST.value,
                                    {"file_id": file_id})
-            
             server_socket.send(packet)
 
             # Await server response
@@ -176,21 +185,19 @@ def process_command(client_socket,  # TODO add type
             try:
                 packet = create_packet(CommandType.REPLACE_REQUEST_VALIDATION.value,
                                        {"file_id": file_id})
-                
                 server_socket.send(packet)
 
                 # Await server response
                 response_validation = decode_packet(server_socket.recv())
                 # TODO To continue
-                
+
             except Exception as e:
                 print(e)
 
-            # TODO use try/except to handle file not found
-            with open(file_path, "rb") as file:
-                new_content = file.read()
-
+            new_content = read_file(file_path)
+            print(new_content)
             # TODO Encrypt new content
+
         case "details":
             if len(args) != 2:
                 raise ValueError(f"Invalid arguments.\nUsage: {usage._details}")
@@ -198,7 +205,6 @@ def process_command(client_socket,  # TODO add type
 
             packet = create_packet(CommandType.DETAILS_REQUEST.value,
                                    {"file_id": file_id})
-            
             server_socket.send(packet)
 
             # Await server response
@@ -216,13 +222,12 @@ def process_command(client_socket,  # TODO add type
 
             packet = create_packet(CommandType.REVOKE_REQUEST.value,
                                    {"file_id": file_id, "user_id": user_id})
-            
             server_socket.send(packet)
 
             # Await server response
             response = decode_packet(server_socket.recv())
             handle_boolean_response(response)
-            
+
         case "read":
             if len(args) != 2:
                 raise ValueError(f"Invalid arguments.\nUsage: {usage._read}")
@@ -249,7 +254,7 @@ def process_command(client_socket,  # TODO add type
                     # Send group creation request to server
                     packet = create_packet(CommandType.GROUP_CREATE_REQUEST.value,
                                            {"name": group_id,
-                                            "key": str(group_key)})
+                                            "key": group_key})
                     server_socket.send(packet)
 
                     # Await server boolean response
@@ -277,16 +282,38 @@ def process_command(client_socket,  # TODO add type
                                     user_id=(user_id := args[3]),
                                     permissions=(permissions := args[4]))
 
-                    # TODO Request master group and user public keys from server (server can deny)
-                    # TODO Decrypt the user public key with the current user private key
-                    # TODO Encrypt the master group public key with the user public key
-                    # TODO Send the encrypted master group public key to the server
-                    # payload = {
-                    #    "group_id": group_id,
-                    #    "user_id": user_id,
-                    #    "permissions": permissions,
-                    #    "group_key": encrypted_group_key
-                    # }
+                    # Request master group and user public keys from server (server can deny)
+                    packet = create_packet(CommandType.INIT_GROUP_ADD_USER_REQUEST.value,
+                                           {"group_id": group_id,
+                                            "user_id": user_id})
+                    server_socket.send(packet)
+
+                    # Await server response (INIT_GROUP_ADD_USER_RESPONSE | ERROR)
+                    response = decode_packet(server_socket.recv())
+                    if response.get("type") == CommandType.ERROR.value:
+                        print(response.get("payload").get("message"))
+                        return
+
+                    # Decrypt the group master key with the current user private key
+                    group_key = response.get("payload").get("group_key")
+                    group_key = RSA.decrypt(group_key, client_private_key)
+
+                    # Encrypt the group master key with the user to add public key
+                    public_key = response.get("payload").get("public_key")
+                    public_key = serialization.load_pem_public_key(public_key)
+                    encrypted_group_key = RSA.encrypt(group_key, public_key)
+
+                    # Send the encrypted master group public key to the server
+                    packet = create_packet(CommandType.GROUP_ADD_USER_REQUEST.value,
+                                           {"group_id": group_id,
+                                            "user_id": user_id,
+                                            "permissions": permissions,
+                                            "group_key": encrypted_group_key})
+                    server_socket.send(packet)
+
+                    # Await server response (SUCCESS | ERROR)
+                    response = decode_packet(server_socket.recv())
+                    handle_boolean_response(response)
 
                 case "delete-user":  # TODO test this
                     if len(args) != 4:
@@ -334,9 +361,7 @@ def process_command(client_socket,  # TODO add type
                     validate_params(group_id=(group_id := args[2]),
                                     file_path=(file_path := args[3]))
 
-                    # TODO use try/except to handle file not found
-                    with open(file_path, "rb") as file:
-                        content = file.read()
+                    content = read_file(file_path)
 
                     # TODO Retrieve file_:name from the file_path (use basename)
                     # TODO Ask server for group public key (server can deny, e.g. permissions, group not found)
