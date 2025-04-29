@@ -402,12 +402,43 @@ def process_command(client_socket,  # TODO add type
                     validate_params(group_id=(group_id := args[2]),
                                     file_path=(file_path := args[3]))
 
+                    filename = os.path.basename(file_path)
                     content = read_file(file_path)
 
-                    # TODO Retrieve file_:name from the file_path (use basename)
-                    # TODO Ask server for group public key (server can deny, e.g. permissions, group not found)
-                    # TODO Encrypt content with group public key
-                    # TODO Send add file to group request to server (check for server response)
+                    # Send group master key from current user request to server
+                    packet = create_packet(CommandType.INIT_GROUP_ADD_REQUEST.value,
+                                           {"group_id": group_id,
+                                            "filename": filename,
+                                            "size": len(content)})
+                    server_socket.send(packet)
+
+                    # Retrieve group master key from server
+                    response = decode_packet(server_socket.recv())
+                    if response.get("type") == CommandType.ERROR.value:
+                        print(response.get("payload").get("message"))
+                        return
+
+                    group_key = response.get("payload").get("group_key")
+
+                    # Decrypt the group master key with the current user private key
+                    dec_group_key = RSA.decrypt(group_key, client_private_key)
+
+                    # Encrypt content with group master key
+                    enc_content = BSON.encode(AES_GCM.encrypt(content, dec_group_key))
+
+                    # Send add file to group request to server
+                    packet = create_packet(CommandType.GROUP_ADD_REQUEST.value,
+                                           {"group_id": group_id,
+                                            "content": enc_content,
+                                            "filename": filename,
+                                            "size": len(content),
+                                            "group_key": group_key})
+                    server_socket.send(packet)
+
+                    # Await server response
+                    response = decode_packet(server_socket.recv())
+                    handle_boolean_response(response)
+
                 case _:
                     raise ValueError(f"Invalid command: group '{group_command}'\n"
                                      f"{usage._group}")

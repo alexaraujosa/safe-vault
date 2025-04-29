@@ -671,6 +671,34 @@ class Operations:
 
         return results
 
+    def init_add_file_to_group(self,
+                               current_user_id: str,
+                               group_id: str,
+                               file_name: str,
+                               size: int) -> str:
+        validate_params(user_id=current_user_id,
+                        group_id=group_id,
+                        file_name=file_name)
+        self.user_exists(current_user_id)
+        self.group_exists(group_id)
+
+        # Check if the user is a member with write permissions in the group
+        group = self.config["groups"][group_id]
+        is_member = current_user_id in group["members"]
+        has_write_permissions = group["members"][current_user_id]["permissions"] == "w"
+
+        if not (is_member and has_write_permissions):
+            raise PermissionDenied(f"User {current_user_id} does not have permission "
+                                   f"to write to group {group_id}.")
+
+        # Check if the file already exists on user vault
+        if file_name in self.config["users"][current_user_id]["files"]:
+            raise FileExistsError(f"File '{file_name}' already exists in "
+                                  f"the user '{current_user_id}' vault.")
+
+        # Retrieve the group key encrypted with the current user public key
+        return self.config["groups"][group_id]["members"][current_user_id]["key"]
+
     def add_file_to_group(self,
                           current_user_id: str,
                           group_id: str,

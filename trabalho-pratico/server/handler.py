@@ -197,15 +197,34 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                     conn.send(create_success_packet(message=group_info))
                 except Exception as e:
                     conn.send(create_error_packet(str(e)))
+
+            case CommandType.INIT_GROUP_ADD_REQUEST.value:
+                group_id = payload.get("group_id")
+                filename = payload.get("filename")
+                size     = payload.get("size")
+                try:
+                    group_key = operations.init_add_file_to_group(current_user_id, group_id, filename, size)
+                    server_response = create_packet(CommandType.INIT_GROUP_ADD_RESPONSE.value,
+                                                    {"group_key": base64.b64decode(group_key)})
+                    conn.send(server_response)
+                except Exception as e:
+                    conn.send(create_error_packet(str(e)))
+
             case CommandType.GROUP_ADD_REQUEST.value:
-                # TODO group add
-                pass
+                group_id  = payload.get("group_id")
+                content   = payload.get("content")
+                filename  = payload.get("filename")
+                size      = payload.get("size")
+                group_key = payload.get("group_key")
+                try:
+                    group_key = base64.b64encode(group_key).decode("utf-8")
+                    file_id = operations.add_file_to_group(current_user_id, group_id, filename, content, size, group_key)
+                    conn.send(create_success_packet(f"File ID: {file_id}"))
+                except Exception as e:
+                    conn.send(create_error_packet(str(e)))
+
             case CommandType.GROUP_DELETE_FILE_REQUEST.value:
                 # TODO group delete-file
-                pass
-
-            case CommandType.EXIT_REQUEST.value:
-                # TODO exit
                 pass
 
     except Exception as e:
