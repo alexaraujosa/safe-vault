@@ -1,5 +1,6 @@
 import os
 import datetime
+import copy
 from bson import BSON
 from common.validation import validate_params
 from common.exceptions import (
@@ -947,7 +948,7 @@ class Operations:
                                    f"to access the file {file_id} details.")
 
         # Retrive file details (owner, size, created, last_modified, last_accessed)
-        file_details = self.config["users"][file_owner_id]["files"][file_name]
+        file_details = copy.deepcopy(self.config["users"][file_owner_id]["files"][file_name])
 
         # Retrieve the users where the file is shared
         file_details["shared_with"] = {}
