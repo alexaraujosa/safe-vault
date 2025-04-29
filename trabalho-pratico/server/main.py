@@ -46,7 +46,10 @@ def handleClient(operations, conn: ssl.SSLSocket, addr):
 
             # Authenticate user and create account if not found
             try:
-                operations.create_user(user_id)
+                public_key = peerCertObj.public_key()  # TODO get public key as string
+                # type(public_key)
+                # type(public_key).public_bytes()
+                operations.create_user(user_id, public_key)
                 print(f"✅ User {user_id} account created.")
             except UserExists:
                 # TODO validate if stored public key is the same
