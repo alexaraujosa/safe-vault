@@ -108,7 +108,10 @@ def read_fully(conn: ssl.SSLSocket, debug=False):
         packet = BytesIO()
         packet.write(initFrag)
 
-        totalLen = int.from_bytes(initFrag[0:4], byteorder="little", signed=True)
+        totalLen = int.from_bytes(initFrag[0:4], byteorder="little", signed=True)  # BSON Spec compliant
+        if (totalLen < 0):
+            raise ValueError("Invalid packet length received.")
+
         accLen = len(initFrag)
 
         if (debug):
