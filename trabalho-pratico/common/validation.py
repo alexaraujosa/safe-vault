@@ -49,8 +49,8 @@ def is_valid_key(key: str) -> bool:
 
 
 def is_valid_size(size: int) -> bool:
-    "Check if the given size is valid, i.e., greater than 0."
-    return isinstance(size, int) and size > 0
+    "Check if the given size is valid, i.e., greater than or 0."
+    return isinstance(size, int) and size >= 0
 
 
 def is_valid_file_path(file_path: str) -> bool:
