@@ -107,15 +107,9 @@ class Operations:
     # User Operations
     ###
 
-    def authenticate_user(self,
-                          username: str) -> None:
-        try:
-            self.create_user(username)
-        except Exception:
-            pass
-
     def create_user(self,
-                    username: str) -> str:
+                    username: str,
+                    public_key: str) -> str:
 
         validate_params(user_id=username)
 
@@ -128,6 +122,7 @@ class Operations:
             "groups": [],
             "own_groups": [],
             "moderator_groups": [],
+            "public_key": public_key,
             "files": {},
             "shared_files": {}
         }
@@ -177,7 +172,11 @@ class Operations:
 
         validate_params(user_id=current_user_id)
         self.user_exists(current_user_id)
-        return list(self.config["users"][current_user_id]["files"].keys())  # filenames
+        # Return list with file_id's
+        return [
+            f"{current_user_id}:{file_name}"
+            for file_name in self.config["users"][current_user_id]["files"]
+        ]
 
     def list_user_shared_files(self,
                                current_user_id: str,
