@@ -3,6 +3,7 @@ import traceback
 from io import BytesIO
 from bson   import BSON
 from enum   import Enum, auto
+from common.debug import G_DEBUG_PACKET_READ_FULLY
 
 PACKET_VERSION = 1
 
@@ -96,36 +97,48 @@ def decode_packet(packet_data: bytes) -> dict:
 
     return packet
 
-def read_fully(conn: ssl.SSLSocket, debug = False):
+
+def read_fully(conn: ssl.SSLSocket, debug=False):
     try:
         initFrag = conn.recv()
 
-        if (debug): print("Initial Fragment:", len(initFrag))
+        if (debug):
+            print("Initial Fragment:", len(initFrag))
+
         packet = BytesIO()
         packet.write(initFrag)
-        
+
         totalLen = int.from_bytes(initFrag[0:4], byteorder="little", signed=True)
         accLen = len(initFrag)
 
-        if (debug): print("TOTAL LENGTH:", totalLen)
-        
+        if (debug):
+            print("TOTAL LENGTH:", totalLen)
+
         while (accLen < totalLen):
-            if (debug): print("READ:", accLen, "/", totalLen, "\nTO READ:", totalLen - accLen)
-            frag = conn.recv(totalLen - accLen) # Do not read the next packet by mistake
-            if (debug): print("New Fragment:", len(frag))
+            if (debug):
+                print("READ:", accLen, "/", totalLen, "\nTO READ:", totalLen - accLen)
+            frag = conn.recv(totalLen - accLen)  # Do not read the next packet by mistake
+            if (debug):
+                print("New Fragment:", len(frag))
 
             accLen += len(frag)
             packet.write(frag)
-        
-        if (debug): print("FINISHED READ:", accLen, "/", totalLen)
+
+        if (debug):
+            print("FINISHED READ:", accLen, "/", totalLen)
 
         packet.seek(0)
         return packet.read(totalLen)
-    except ssl.SSLEOFError: # Connection died before receiving the full packet
+    except ssl.SSLEOFError:  # Connection died before receiving the full packet
         return None
     except Exception:
         if (debug):
-            print(f"📧 Error reading packet.")
+            print("📧 Error reading packet.")
             traceback.print_exc()
-            
+
         return None
+
+
+def receive_packet(conn: ssl.SSLSocket):
+    packet = read_fully(conn, debug=G_DEBUG_PACKET_READ_FULLY)
+    return decode_packet(packet)

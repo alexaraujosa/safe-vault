@@ -1,5 +1,4 @@
 import os
-import ssl
 from bson import BSON
 from cryptography.hazmat.primitives import serialization
 import client.usage as usage
@@ -8,23 +7,11 @@ from common.validation import validate_params
 from common.packet import (
     CommandType,
     create_packet,
-    # create_success_packet,
-    # create_error_packet,
     create_confirm_packet,
     create_abort_packet,
-    decode_packet,
-    read_fully
+    receive_packet,
 )
 
-g_DEBUG = False
-def trace(*args): 
-    if (g_DEBUG): print(*args)
-
-def receive_packet(conn: ssl.SSLSocket):
-    packet = read_fully(conn, g_DEBUG)
-    response = decode_packet(packet)
-
-    return response
 
 def read_file(file_path: str) -> bytes:
     """
@@ -98,7 +85,6 @@ def process_command(client_socket,  # TODO add type
             server_socket.send(packet)
 
             # Await server response
-            # response = decode_packet(server_socket.recv())
             response = receive_packet(server_socket)
             handle_boolean_response(response)
 
@@ -124,7 +110,6 @@ def process_command(client_socket,  # TODO add type
             server_socket.send(packet)
 
             # Await server response and print the list results
-            # response = decode_packet(server_socket.recv())
             response = receive_packet(server_socket)
             payload = response.get("payload")
             if response.get("type") == CommandType.ERROR.value:
@@ -150,7 +135,6 @@ def process_command(client_socket,  # TODO add type
             server_socket.send(packet)
 
             # Await server response
-            # response_validation = decode_packet(server_socket.recv())
             response_validation = receive_packet(server_socket)
 
             if response_validation.get("type") == CommandType.SHARE_RESPONSE_VALIDATION.value:
@@ -170,7 +154,6 @@ def process_command(client_socket,  # TODO add type
                 server_socket.send(packet_share)
 
                 # Await server response
-                # response_share = decode_packet(server_socket.recv())
                 response_share = receive_packet(server_socket)
 
                 handle_boolean_response(response_share)
@@ -187,7 +170,6 @@ def process_command(client_socket,  # TODO add type
             server_socket.send(packet)
 
             # Await server response
-            # response = decode_packet(server_socket.recv())
             response = receive_packet(server_socket)
             handle_boolean_response(response)
 
@@ -207,7 +189,6 @@ def process_command(client_socket,  # TODO add type
                 server_socket.send(packet)
 
                 # Await server response
-                # response_validation = decode_packet(server_socket.recv())
                 response_validation = receive_packet(server_socket)
 
                 if response_validation.get("type") == CommandType.REPLACE_RESPONSE_VALIDATION.value:
@@ -224,7 +205,6 @@ def process_command(client_socket,  # TODO add type
                     server_socket.send(packet_replace)
 
                     # Await server response
-                    # response = decode_packet(server_socket.recv())
                     response = receive_packet(server_socket)
                     handle_boolean_response(response)
                 else:
@@ -247,7 +227,6 @@ def process_command(client_socket,  # TODO add type
             server_socket.send(packet)
 
             # Await server response
-            # response = decode_packet(server_socket.recv())
             response = receive_packet(server_socket)
             if response.get("type") == CommandType.DETAILS_RESPONSE.value:
                 for k, v in response.get("payload").items():
@@ -266,7 +245,6 @@ def process_command(client_socket,  # TODO add type
             server_socket.send(packet)
 
             # Await server response
-            # response = decode_packet(server_socket.recv())
             response = receive_packet(server_socket)
             handle_boolean_response(response)
 
@@ -280,7 +258,6 @@ def process_command(client_socket,  # TODO add type
             server_socket.send(packet)
 
             # Await server response
-            # response = decode_packet(server_socket.recv())
             response = receive_packet(server_socket)
             if response.get("type") == CommandType.READ_RESPONSE.value:
                 content_enc = BSON.decode(response.get("payload").get("content"))
@@ -320,7 +297,6 @@ def process_command(client_socket,  # TODO add type
                     server_socket.send(packet)
 
                     # Await server boolean response
-                    # response = decode_packet(server_socket.recv())
                     response = receive_packet(server_socket)
                     handle_boolean_response(response)
 
@@ -335,7 +311,6 @@ def process_command(client_socket,  # TODO add type
                     server_socket.send(packet)
 
                     # Await server boolean response
-                    # response = decode_packet(server_socket.recv())
                     response = receive_packet(server_socket)
                     handle_boolean_response(response)
 
@@ -353,7 +328,6 @@ def process_command(client_socket,  # TODO add type
                     server_socket.send(packet)
 
                     # Await server response (INIT_GROUP_ADD_USER_RESPONSE | ERROR)
-                    # response = decode_packet(server_socket.recv())
                     response = receive_packet(server_socket)
                     if response.get("type") == CommandType.ERROR.value:
                         print(response.get("payload").get("message"))
@@ -377,7 +351,6 @@ def process_command(client_socket,  # TODO add type
                     server_socket.send(packet)
 
                     # Await server response (SUCCESS | ERROR)
-                    # response = decode_packet(server_socket.recv())
                     response = receive_packet(server_socket)
                     handle_boolean_response(response)
 
@@ -395,7 +368,6 @@ def process_command(client_socket,  # TODO add type
                     server_socket.send(packet)
 
                     # Await server response (NEED_CONFIRMATION | SUCCESS | ERROR)
-                    # response = decode_packet(server_socket.recv())
                     response = receive_packet(server_socket)
 
                     if response.get("type") == CommandType.NEED_CONFIRMATION.value:
@@ -419,7 +391,6 @@ def process_command(client_socket,  # TODO add type
                     server_socket.send(packet)
 
                     # Await server response (SUCCESS | ERROR)
-                    # response = decode_packet(server_socket.recv())
                     response = receive_packet(server_socket)
                     print(response.get("payload").get("message"))
 
@@ -440,7 +411,7 @@ def process_command(client_socket,  # TODO add type
                     server_socket.send(packet)
 
                     # Retrieve group master key from server
-                    response = decode_packet(server_socket.recv())
+                    response = receive_packet(server_socket)
                     if response.get("type") == CommandType.ERROR.value:
                         print(response.get("payload").get("message"))
                         return
@@ -463,7 +434,7 @@ def process_command(client_socket,  # TODO add type
                     server_socket.send(packet)
 
                     # Await server response
-                    response = decode_packet(server_socket.recv())
+                    response = receive_packet(server_socket)
                     handle_boolean_response(response)
 
                 case _:

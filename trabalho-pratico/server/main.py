@@ -18,12 +18,12 @@ from server.config     import Config
 from server.operations import Operations
 from server.handler    import process_request
 
+from common.debug import G_SERVER_DEBUG as G_DEBUG
+from common.debug import trace
+
 CONFIG_PATH = "server/config.json"
 VAULT_PATH = "server/vault"
 
-g_DEBUG = False
-def trace(*args):
-    if (g_DEBUG): print(*args)
 
 def extract_user_id(cert):
     subject = cert.subject
@@ -69,13 +69,13 @@ def handleClient(operations, conn: ssl.SSLSocket, addr):
         while True:
             try:
                 # packet_data = conn.recv()
-                packet_data = read_fully(conn, g_DEBUG)
+                packet_data = read_fully(conn, G_DEBUG)
                 if not packet_data:
                     break
 
                 print(f"📦 Received packet from {addr}")
-                trace("PACKET LEN:", len(packet_data))
-                trace(packet_data)
+                trace("PACKET LEN:", len(packet_data), g_debug=G_DEBUG)
+                trace(packet_data, g_debug=G_DEBUG)
 
                 # TODO lock other threads from accessing the operations object
                 process_request(operations, user_id, conn, packet_data)
@@ -105,14 +105,14 @@ def main():
     parser.add_argument("--config",      type=str, required=False, default=CONFIG_PATH, help="Path to server's config file.")
     parser.add_argument("--vault",       type=str, required=False, default=VAULT_PATH,  help="Path to server's vault directory.")
     parser.add_argument(
-        "--debug", "-d", 
-        action=argparse.BooleanOptionalAction, required=False, default=False, 
+        "--debug", "-d",
+        action=argparse.BooleanOptionalAction, required=False, default=False,
         help="Whether the server should output debug traces."
     )
     args = parser.parse_args()
 
-    global g_DEBUG
-    g_DEBUG = args.debug
+    global G_DEBUG
+    G_DEBUG = args.debug
 
     ca_cert_file = args.cert
     p12_file = args.keystore

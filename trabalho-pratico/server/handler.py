@@ -1,7 +1,6 @@
 import ssl
 import json
 import base64
-from bson import BSON
 from server.operations import Operations
 from common.exceptions import NeedConfirmation
 from common.packet import (
@@ -10,7 +9,8 @@ from common.packet import (
     create_success_packet,
     create_error_packet,
     create_need_confirmation_packet,
-    decode_packet
+    decode_packet,
+    receive_packet
 )
 
 
@@ -57,7 +57,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                     conn.send(intermediate_packet)
 
                     # Await client response with encrypted file key
-                    client_response_packet = decode_packet(conn.recv())
+                    client_response_packet = receive_packet(conn)
 
                     file_key = client_response_packet.get("payload").get("key")
                     file_key = base64.b64encode(file_key).decode("utf-8")
@@ -84,7 +84,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                     conn.send(intermediate_packet)
 
                     # Await client response with encrypted new file content
-                    client_response_packet = decode_packet(conn.recv())
+                    client_response_packet = receive_packet(conn)
 
                     new_content = client_response_packet.get("payload").get("content")
                     new_size = client_response_packet.get("payload").get("size")
@@ -180,7 +180,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 except NeedConfirmation as e:
                     conn.send(create_need_confirmation_packet(str(e)))
 
-                    client_response = decode_packet(conn.recv())
+                    client_response = receive_packet(conn)
                     if client_response.get("type") == CommandType.CONFIRM.value:
                         try:
                             operations.remove_user_from_group(current_user_id, group_id, user_id, True)
