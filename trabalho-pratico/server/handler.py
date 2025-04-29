@@ -90,7 +90,22 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
             case CommandType.REPLACE_REQUEST_VALIDATION.value:
                 try:
                     file_id = payload.get("file_id")
-                    operations.validate_replace_file(file_id)
+                    file_key = operations.validate_replace_file(current_user_id, file_id)
+
+                    intermediate_packet = create_packet(CommandType.REPLACE_RESPONSE_VALIDATION.value,
+                                                        {"key": base64.b64decode(file_key)})
+                    
+                    conn.send(intermediate_packet)
+
+                    # Await client response with encrypted new file content
+                    client_response_packet = decode_packet(conn.recv())
+
+                    new_content = client_response_packet.get("payload").get("content")
+                    new_size = client_response_packet.get("payload").get("size")
+                    operations.replace_file(current_user_id, file_id, new_content, new_size)
+
+                    response = create_success_packet(f"File '{file_id}' replaced with new content.")
+
                 except Exception as e:
                     response = create_error_packet(str(e))
                 finally:
@@ -98,7 +113,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
 
             case CommandType.DETAILS_REQUEST.value:
                 try:
-                    file_id = packet.get("payload")["file_id"]
+                    file_id = payload.get("file_id")
                     details = operations.file_details(current_user_id, file_id)
                     response = create_packet(CommandType.DETAILS_RESPONSE.value,
                                              details)
@@ -119,8 +134,21 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                     conn.send(response)
                     
             case CommandType.READ_REQUEST.value:
-                # TODO read
-                pass
+                try:
+                    file_id = payload.get("file_id")
+                    file = operations.read_file(current_user_id, file_id)
+
+                    file_content = file.get("file_contents")
+                    file_key = base64.b64decode(file.get("key"))
+
+                    response = create_packet(CommandType.READ_RESPONSE.value,
+                                             {"content": file_content,
+                                              "key": file_key})
+                except Exception as e:
+                    response = create_error_packet(str(e))
+                finally:
+                    conn.send(response)
+
             case CommandType.GROUP_CREATE_REQUEST.value:
                 group_name = payload.get("name")
                 group_key  = payload.get("key")
