@@ -195,7 +195,7 @@ def process_command(client_socket,  # TODO add type
 
                 if response_validation.get("type") == CommandType.REPLACE_RESPONSE_VALIDATION.value:
                     user_file_sym_key_bytes = response_validation.get("payload").get("key")
-                    
+
                     # Decrypt file symmetric key
                     file_symmetric_key = RSA.decrypt(user_file_sym_key_bytes, client_private_key)
 
@@ -204,7 +204,6 @@ def process_command(client_socket,  # TODO add type
                     packet_replace = create_packet(CommandType.REPLACE_REQUEST_WITH_CONTENT.value,
                                                    {"content": BSON.encode(content_enc),
                                                     "size": len(new_content)})
-                    
                     server_socket.send(packet_replace)
 
                     # Await server response
@@ -212,7 +211,7 @@ def process_command(client_socket,  # TODO add type
                     handle_boolean_response(response)
                 else:
                     handle_boolean_response(response_validation)
-                    
+
             except Exception as e:
                 print(e)
 
@@ -258,7 +257,6 @@ def process_command(client_socket,  # TODO add type
 
             packet = create_packet(CommandType.READ_REQUEST.value,
                                    {"file_id": file_id})
-            
             server_socket.send(packet)
 
             # Await server response
