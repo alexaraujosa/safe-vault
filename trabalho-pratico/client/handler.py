@@ -136,8 +136,8 @@ def process_command(client_socket,  # TODO add type
                     # Create master group key AES
                     group_key = AES_GCM.generate_key()
 
-                    # Encrypt master group key with current user private key
-                    group_key = RSA.encrypt(group_key, client_private_key)
+                    # Encrypt master group key with current user public key
+                    group_key = RSA.encrypt(group_key, client_public_key)
 
                     # Send group creation request to server
                     packet = create_packet(CommandType.GROUP_CREATE_REQUEST.value,
