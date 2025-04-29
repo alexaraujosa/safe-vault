@@ -25,6 +25,8 @@ class CommandType(Enum):
     READ_RESPONSE             = auto()
     GROUP_CREATE_REQUEST      = auto()
     GROUP_DELETE_REQUEST      = auto()
+    INIT_GROUP_ADD_USER_REQUEST = auto()
+    INIT_GROUP_ADD_USER_RESPONSE = auto()
     GROUP_ADD_USER_REQUEST    = auto()
     GROUP_DELETE_USER_REQUEST = auto()
     GROUP_LIST_REQUEST        = auto()
