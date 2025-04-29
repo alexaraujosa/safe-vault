@@ -226,14 +226,15 @@ class Operations:
 
         return files
 
+    # TODO rename to init_share_user_file
     def validate_share_user_file(self,
                                  current_user_id: str,
                                  file_id: str,
                                  user_id_to_share: str,
                                  permissions: str) -> tuple[str, str]:
         validate_params(user_ids=[current_user_id, user_id_to_share],
-                file_id=file_id,
-                permissions=permissions)
+                        file_id=file_id,
+                        permissions=permissions)
         self.user_exists(current_user_id)
         self.user_exists(user_id_to_share)
 
@@ -250,7 +251,7 @@ class Operations:
             raise PermissionDenied(f"User {current_user_id} is not the owner of file {file_id}.")
 
         return self.config["users"][user_id_to_share]["public_key"], self.config["users"][current_user_id]["files"][file_name]["key"]
-        
+
     # INFO before calling this function the server must send the shared user public key
     # so the client returns us the encrypted symmetric key for that user receiving the share
     def share_user_file(self,
@@ -469,6 +470,47 @@ class Operations:
         # Delete the group
         del self.config["groups"][group_id]
 
+    def init_add_user_to_group(self,
+                               current_user_id: str,
+                               group_id: str,
+                               user_id: str) -> None:
+        """
+        Validate the parameters and check if the user can be added to the group.
+
+        This function is used before calling add_user_to_group in order to retrieve
+        the public key of the user to be added to the group.
+
+        If the user can be added, return the group master key and the public key
+        of the user to be added.
+        """
+
+        validate_params(user_ids=[current_user_id, user_id],
+                        group_id=group_id)
+        self.user_exists(current_user_id)
+        self.user_exists(user_id)
+        self.group_exists(group_id)
+
+        # Check if current user is the owner or moderator of the group
+        group = self.config["groups"][group_id]
+        is_owner = current_user_id == group["owner"]
+        is_moderator = current_user_id in group["moderators"]
+
+        if not (is_owner or is_moderator):
+            raise PermissionDenied(f"User {current_user_id} is not the owner or "
+                                   f"moderator of group {group_id}.")
+
+        # Check if the user being added is the owner
+        if user_id == group["owner"]:
+            raise PermissionDenied(f"User {user_id} is the owner of group {group_id}.")
+
+        # Check if the user being added is a moderator
+        if user_id in group["moderators"]:
+            raise PermissionDenied(f"User {user_id} is already a moderator of group {group_id}.")
+
+        # Return the encrypted group master key and the public key of the user to be added
+        return self.config["groups"][group_id]["members"][current_user_id]["key"], \
+            self.config["users"][user_id]["public_key"]
+
     # INFO The group key is the master group key encrypted with the user to be added public key
     # INFO If the user is already a member of the group, the key and permissions will be updated
     def add_user_to_group(self,
@@ -476,7 +518,7 @@ class Operations:
                           group_id: str,
                           user_id: str,
                           permissions: str,
-                          group_key: str) -> None:
+                          group_key: str) -> str:
 
         validate_params(user_ids=[current_user_id, user_id],
                         group_id=group_id,
@@ -503,11 +545,10 @@ class Operations:
         if user_id in group["moderators"]:
             raise PermissionDenied(f"User {user_id} is already a moderator of group {group_id}.")
 
-        # Check if the user is already in the group
+        # Check if the user is already in the group, if so return a message to client
         if user_id in group["members"]:
-            # TODO replace this print to sent this message to the client
-            print(f"User {user_id} is already in group {group_id}.\n"
-                  f"Updating permissions to {permissions}.")
+            message = f"User {user_id} is already in group {group_id}.\n" \
+                      f"Updating permissions to {permissions}."
 
         # Add the user to the group with the given permissions
         self.config["groups"][group_id]["members"][user_id] = {
@@ -517,6 +558,8 @@ class Operations:
 
         # Add the group to the user's groups
         self.config["users"][user_id]["groups"].append(group_id)
+
+        return message
 
     # INFO if the user is a moderator, he will also be removed from the moderators list
     # INFO if the user being removed is the owner of any files in the group,
@@ -727,10 +770,7 @@ class Operations:
 
         # Check if the user is already a moderator
         if user_id in group["moderators"]:
-            # INFO We can throw an exception, print a message
-            # or just ignore this case by returning None.
-            print(f"User {user_id} is already a moderator of group {group_id}.")
-            return
+            raise Exception(f"User {user_id} is already a moderator of group {group_id}.")
 
         # Add the user as member with write permissions
         self.config["groups"][group_id]["members"][user_id] = {
@@ -843,12 +883,13 @@ class Operations:
             "file_contents": file_contents,
             "key": key
         }
-    
+
+    # TODO rename to init_replace_file
     def validate_replace_file(self,
                               current_user_id: str,
                               file_id: str) -> None:
         validate_params(user_id=current_user_id,
-                file_id=file_id)
+                        file_id=file_id)
         self.user_exists(current_user_id)
 
         # Extract the user and file name from the file ID
@@ -865,14 +906,14 @@ class Operations:
             return self.config["users"][file_owner_id]["files"][file_name]["key"]
         elif file_acl["users"].get(current_user_id) == "w":
             return self.config["users"][current_user_id]["shared_files"][file_owner_id][file_name]["key"]
-        
+
         for group_id in file_acl["groups"]:
             members = self.config["groups"][group_id]["members"]
             if members.get(current_user_id).get("permissions") == "w":
                 return self.config["groups"][group_id]["members"][current_user_id]["key"]
 
         raise PermissionDenied(f"User {current_user_id} does not have permission "
-                                   f"to replace the file {file_id}.")
+                               f"to replace the file {file_id}.")
 
     def replace_file(self,
                      current_user_id: str,
