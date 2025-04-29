@@ -6,7 +6,9 @@ import socket
 import argparse
 import traceback
 import threading
+import base64
 from cryptography import x509
+from cryptography.hazmat.primitives import serialization
 
 from common.exceptions import UserExists
 from common.keystore   import Keystore
@@ -46,10 +48,11 @@ def handleClient(operations, conn: ssl.SSLSocket, addr):
 
             # Authenticate user and create account if not found
             try:
-                public_key = peerCertObj.public_key()  # TODO get public key as string
-                # type(public_key)
-                # type(public_key).public_bytes()
-                operations.create_user(user_id, public_key)
+                public_key = peerCertObj.public_key().public_bytes(
+                    encoding=serialization.Encoding.PEM,
+                    format=serialization.PublicFormat.SubjectPublicKeyInfo
+                )
+                operations.create_user(user_id, base64.b64encode(public_key).decode("utf-8"))
                 print(f"✅ User {user_id} account created.")
             except UserExists:
                 # TODO validate if stored public key is the same
