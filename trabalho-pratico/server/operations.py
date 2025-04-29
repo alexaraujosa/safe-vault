@@ -38,6 +38,7 @@ def get_current_timestamp() -> str:
     return datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")
 
 
+# TODO verify there's no path traversal attack
 def write_file(file_path: str, file_contents: BSON) -> None:
     """
     Atomically write the file contents to the given file path.
