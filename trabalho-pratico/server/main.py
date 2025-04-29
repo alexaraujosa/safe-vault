@@ -8,6 +8,7 @@ import traceback
 import threading
 from cryptography import x509
 
+from common.exceptions import UserExists
 from common.keystore   import Keystore
 from common.validation import is_valid_file
 from server.config     import Config
@@ -43,8 +44,16 @@ def handleClient(operations, conn: ssl.SSLSocket, addr):
                 conn.close()
                 return
 
-            operations.authenticate_user(user_id)
-            print(f"✅ Authenticated user: {user_id}")
+            # Authenticate user and create account if not found
+            try:
+                operations.create_user(user_id)
+                print(f"✅ User {user_id} account created.")
+            except UserExists:
+                # TODO validate if stored public key is the same
+                print(f"✅ User {user_id} authenticated.")
+            except ValueError:
+                print(f"🚧 Invalid user ID: {user_id}.")
+                exit(1)
 
         _died = False
         while True:
