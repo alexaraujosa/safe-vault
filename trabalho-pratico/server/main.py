@@ -13,6 +13,7 @@ from cryptography.hazmat.primitives import serialization
 from common.exceptions import UserExists
 from common.keystore   import Keystore
 from common.validation import is_valid_file
+from common.packet     import read_fully
 from server.config     import Config
 from server.operations import Operations
 from server.handler    import process_request
@@ -20,6 +21,9 @@ from server.handler    import process_request
 CONFIG_PATH = "server/config.json"
 VAULT_PATH = "server/vault"
 
+g_DEBUG = False
+def trace(*args):
+    if (g_DEBUG): print(*args)
 
 def extract_user_id(cert):
     subject = cert.subject
@@ -64,11 +68,14 @@ def handleClient(operations, conn: ssl.SSLSocket, addr):
         _died = False
         while True:
             try:
-                packet_data = conn.recv()
+                # packet_data = conn.recv()
+                packet_data = read_fully(conn, g_DEBUG)
                 if not packet_data:
                     break
 
                 print(f"📦 Received packet from {addr}")
+                trace("PACKET LEN:", len(packet_data))
+                trace(packet_data)
 
                 # TODO lock other threads from accessing the operations object
                 process_request(operations, user_id, conn, packet_data)
@@ -92,12 +99,20 @@ def handleClient(operations, conn: ssl.SSLSocket, addr):
 def main():
     # Command line arguments
     parser = argparse.ArgumentParser("server")
-    parser.add_argument("--cert",     type=str, required=True,                       help="Path to server's CA certificate.")
-    parser.add_argument("--keystore", type=str, required=True,                       help="Path to server's keystore file.")
-    parser.add_argument("--port",     type=int, required=False, default=8443,        help="Port to server listen on.")
-    parser.add_argument("--config",   type=str, required=False, default=CONFIG_PATH, help="Path to server's config file.")
-    parser.add_argument("--vault",    type=str, required=False, default=VAULT_PATH,  help="Path to server's vault directory.")
+    parser.add_argument("--cert",        type=str, required=True,                       help="Path to server's CA certificate.")
+    parser.add_argument("--keystore",    type=str, required=True,                       help="Path to server's keystore file.")
+    parser.add_argument("--port",        type=int, required=False, default=8443,        help="Port to server listen on.")
+    parser.add_argument("--config",      type=str, required=False, default=CONFIG_PATH, help="Path to server's config file.")
+    parser.add_argument("--vault",       type=str, required=False, default=VAULT_PATH,  help="Path to server's vault directory.")
+    parser.add_argument(
+        "--debug", "-d", 
+        action=argparse.BooleanOptionalAction, required=False, default=False, 
+        help="Whether the server should output debug traces."
+    )
     args = parser.parse_args()
+
+    global g_DEBUG
+    g_DEBUG = args.debug
 
     ca_cert_file = args.cert
     p12_file = args.keystore

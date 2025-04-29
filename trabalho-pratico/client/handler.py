@@ -1,4 +1,5 @@
 import os
+import ssl
 from bson import BSON
 from cryptography.hazmat.primitives import serialization
 import client.usage as usage
@@ -11,9 +12,19 @@ from common.packet import (
     # create_error_packet,
     create_confirm_packet,
     create_abort_packet,
-    decode_packet
+    decode_packet,
+    read_fully
 )
 
+g_DEBUG = False
+def trace(*args): 
+    if (g_DEBUG): print(*args)
+
+def receive_packet(conn: ssl.SSLSocket):
+    packet = read_fully(conn, g_DEBUG)
+    response = decode_packet(packet)
+
+    return response
 
 def read_file(file_path: str) -> bytes:
     """
@@ -87,7 +98,8 @@ def process_command(client_socket,  # TODO add type
             server_socket.send(packet)
 
             # Await server response
-            response = decode_packet(server_socket.recv())
+            # response = decode_packet(server_socket.recv())
+            response = receive_packet(server_socket)
             handle_boolean_response(response)
 
         case "list":
@@ -112,7 +124,8 @@ def process_command(client_socket,  # TODO add type
             server_socket.send(packet)
 
             # Await server response and print the list results
-            response = decode_packet(server_socket.recv())
+            # response = decode_packet(server_socket.recv())
+            response = receive_packet(server_socket)
             payload = response.get("payload")
             if response.get("type") == CommandType.ERROR.value:
                 print(payload.get("message"))
@@ -137,7 +150,8 @@ def process_command(client_socket,  # TODO add type
             server_socket.send(packet)
 
             # Await server response
-            response_validation = decode_packet(server_socket.recv())
+            # response_validation = decode_packet(server_socket.recv())
+            response_validation = receive_packet(server_socket)
 
             if response_validation.get("type") == CommandType.SHARE_RESPONSE_VALIDATION.value:
                 user_pub_key_bytes = response_validation.get("payload").get("public_key")
@@ -156,7 +170,8 @@ def process_command(client_socket,  # TODO add type
                 server_socket.send(packet_share)
 
                 # Await server response
-                response_share = decode_packet(server_socket.recv())
+                # response_share = decode_packet(server_socket.recv())
+                response_share = receive_packet(server_socket)
 
                 handle_boolean_response(response_share)
             else:
@@ -172,7 +187,8 @@ def process_command(client_socket,  # TODO add type
             server_socket.send(packet)
 
             # Await server response
-            response = decode_packet(server_socket.recv())
+            # response = decode_packet(server_socket.recv())
+            response = receive_packet(server_socket)
             handle_boolean_response(response)
 
         case "replace":
@@ -191,7 +207,8 @@ def process_command(client_socket,  # TODO add type
                 server_socket.send(packet)
 
                 # Await server response
-                response_validation = decode_packet(server_socket.recv())
+                # response_validation = decode_packet(server_socket.recv())
+                response_validation = receive_packet(server_socket)
 
                 if response_validation.get("type") == CommandType.REPLACE_RESPONSE_VALIDATION.value:
                     user_file_sym_key_bytes = response_validation.get("payload").get("key")
@@ -207,7 +224,8 @@ def process_command(client_socket,  # TODO add type
                     server_socket.send(packet_replace)
 
                     # Await server response
-                    response = decode_packet(server_socket.recv())
+                    # response = decode_packet(server_socket.recv())
+                    response = receive_packet(server_socket)
                     handle_boolean_response(response)
                 else:
                     handle_boolean_response(response_validation)
@@ -229,7 +247,8 @@ def process_command(client_socket,  # TODO add type
             server_socket.send(packet)
 
             # Await server response
-            response = decode_packet(server_socket.recv())
+            # response = decode_packet(server_socket.recv())
+            response = receive_packet(server_socket)
             if response.get("type") == CommandType.DETAILS_RESPONSE.value:
                 for k, v in response.get("payload").items():
                     print(f"{k}: {v}")
@@ -247,7 +266,8 @@ def process_command(client_socket,  # TODO add type
             server_socket.send(packet)
 
             # Await server response
-            response = decode_packet(server_socket.recv())
+            # response = decode_packet(server_socket.recv())
+            response = receive_packet(server_socket)
             handle_boolean_response(response)
 
         case "read":
@@ -260,7 +280,8 @@ def process_command(client_socket,  # TODO add type
             server_socket.send(packet)
 
             # Await server response
-            response = decode_packet(server_socket.recv())
+            # response = decode_packet(server_socket.recv())
+            response = receive_packet(server_socket)
             if response.get("type") == CommandType.READ_RESPONSE.value:
                 content_enc = BSON.decode(response.get("payload").get("content"))
                 file_symmetric_key_enc = response.get("payload").get("key")
@@ -299,7 +320,8 @@ def process_command(client_socket,  # TODO add type
                     server_socket.send(packet)
 
                     # Await server boolean response
-                    response = decode_packet(server_socket.recv())
+                    # response = decode_packet(server_socket.recv())
+                    response = receive_packet(server_socket)
                     handle_boolean_response(response)
 
                 case "delete":
@@ -313,7 +335,8 @@ def process_command(client_socket,  # TODO add type
                     server_socket.send(packet)
 
                     # Await server boolean response
-                    response = decode_packet(server_socket.recv())
+                    # response = decode_packet(server_socket.recv())
+                    response = receive_packet(server_socket)
                     handle_boolean_response(response)
 
                 case "add-user":
@@ -330,7 +353,8 @@ def process_command(client_socket,  # TODO add type
                     server_socket.send(packet)
 
                     # Await server response (INIT_GROUP_ADD_USER_RESPONSE | ERROR)
-                    response = decode_packet(server_socket.recv())
+                    # response = decode_packet(server_socket.recv())
+                    response = receive_packet(server_socket)
                     if response.get("type") == CommandType.ERROR.value:
                         print(response.get("payload").get("message"))
                         return
@@ -353,7 +377,8 @@ def process_command(client_socket,  # TODO add type
                     server_socket.send(packet)
 
                     # Await server response (SUCCESS | ERROR)
-                    response = decode_packet(server_socket.recv())
+                    # response = decode_packet(server_socket.recv())
+                    response = receive_packet(server_socket)
                     handle_boolean_response(response)
 
                 case "delete-user":  # TODO test this
@@ -370,7 +395,8 @@ def process_command(client_socket,  # TODO add type
                     server_socket.send(packet)
 
                     # Await server response (NEED_CONFIRMATION | SUCCESS | ERROR)
-                    response = decode_packet(server_socket.recv())
+                    # response = decode_packet(server_socket.recv())
+                    response = receive_packet(server_socket)
 
                     if response.get("type") == CommandType.NEED_CONFIRMATION.value:
                         print(response.get("payload").get("message"))
@@ -393,7 +419,8 @@ def process_command(client_socket,  # TODO add type
                     server_socket.send(packet)
 
                     # Await server response (SUCCESS | ERROR)
-                    response = decode_packet(server_socket.recv())
+                    # response = decode_packet(server_socket.recv())
+                    response = receive_packet(server_socket)
                     print(response.get("payload").get("message"))
 
                 case "add":
