@@ -778,6 +778,7 @@ class Operations:
     # Group Moderator Operations
     ###
 
+    # TODO rename to init_add_moderator_to_group
     def validate_add_moderator_to_group(self,
                                         current_user_id: str,
                                         group_id: str,
@@ -799,9 +800,9 @@ class Operations:
         # Check if the user is already a moderator
         if user_id in group["moderators"]:
             raise Exception(f"User {user_id} is already a moderator of group {group_id}.")
-        
-        return self.config["groups"][group_id]["members"][current_user_id]["key"], self.config["users"][user_id]["public_key"]
 
+        return self.config["groups"][group_id]["members"][current_user_id]["key"], \
+            self.config["users"][user_id]["public_key"]
 
     def add_moderator_to_group(self,
                                current_user_id: str,

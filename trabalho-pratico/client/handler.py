@@ -446,10 +446,9 @@ def process_command(client_socket: socket,
                     response = receive_packet(server_socket)
                     handle_boolean_response(response)
 
-                
                 case "add-moderator":
                     if len(args) != 4:
-                        raise ValueError(f"Invalid arguments.\nUsage: {usage._group_add_moderator}")    # TODO define usage
+                        raise ValueError(f"Invalid arguments.\nUsage: {usage._group_add_moderator}")
                     validate_params(group_id=(group_id := args[2]),
                                     user_id=(user_id := args[3]))
 
@@ -458,7 +457,7 @@ def process_command(client_socket: socket,
                                            {"group_id": group_id,
                                             "user_id": user_id})
                     server_socket.send(packet)
-                    
+
                     # Await server response
                     response = receive_packet(server_socket)
                     if response.get("type") == CommandType.GROUP_ADD_MODERATOR_RESPONSE_WITH_KEYS.value:
@@ -484,7 +483,7 @@ def process_command(client_socket: socket,
 
                 case "remove-moderator":
                     if len(args) != 4:
-                        raise ValueError(f"Invalid arguments.\nUsage: {usage._group_remove_moderator}") # TODO define usage
+                        raise ValueError(f"Invalid arguments.\nUsage: {usage._group_remove_moderator}")
                     validate_params(group_id=(group_id := args[2]),
                                     user_id=(user_id := args[3]))
 
@@ -493,7 +492,7 @@ def process_command(client_socket: socket,
                                            {"group_id": group_id,
                                             "moderator_id": user_id})
                     server_socket.send(packet)
-                    
+
                     # Await server response
                     response = receive_packet(server_socket)
                     handle_boolean_response(response)
@@ -503,7 +502,5 @@ def process_command(client_socket: socket,
 
                 # TODO change user permissions
                 # TODO delete-file
-                # TODO add-moderator
-                # TODO delete-moderator
         case _:
             raise ValueError(f"Invalid command: '{command}'\n{usage._full}")
