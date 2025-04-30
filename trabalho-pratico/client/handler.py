@@ -90,7 +90,7 @@ def process_command(client_socket: socket,
             response = receive_packet(server_socket)
             handle_boolean_response(response)
 
-        case "list":  # TODO better output
+        case "list":
             rest = args[1:]
             match rest:
                 case []:  # list
@@ -118,10 +118,21 @@ def process_command(client_socket: socket,
                 print(payload.get("message"))
             elif CommandType.LIST_RESPONSE.value:
                 if len(payload) == 0:
-                    print("No files found on own vault.")
+                    print("No files found.")
 
-                for entry in payload:
-                    print(entry)
+                match rest:
+                    case []:
+                        print("Files on your vault:")
+                        for file in payload:
+                            print(f"[-] {file}")
+                    case ["-u", user_id]:
+                        print(f"Files shared by the user '{user_id}':")
+                        for file, permission in payload:
+                            print(f"[-] [{permission}] {file}")
+                    case ["-g", group_id]:
+                        for file, info in payload:
+                            permission = info.get("permissions")
+                            print(f"[-] [{permission}] {file}")
 
         case "share":
             if len(args) != 4:
