@@ -240,7 +240,26 @@ def process_command(client_socket: socket,
             response = receive_packet(server_socket)
             if response.get("type") == CommandType.DETAILS_RESPONSE.value:
                 for k, v in response.get("payload").items():
-                    print(f"{k}: {v}")
+                    if k == "shared_with":
+                        if len(v) == 0:
+                            print("Shared with no one.")
+                        else:
+                            print("Shared with:")
+                            for share_k, shared_v in v.items():
+                                permissions = shared_v.get("permissions")
+                                print(f" {share_k} : {permissions}")
+                    elif k == "group_members":
+                        if len(v) == 0:
+                            print("No member of a group can see/edit.")
+                        else:
+                            print("Group members:")
+                            for group_id, group_members in v.items():
+                                print(f" Group '{group_id}':")
+                                for member, info in group_members.items():
+                                    permissions = info.get("permissions")
+                                    print(f" |->{member} [{permissions}]")
+                    else:
+                        print(f"{k}: {v}")
             else:
                 handle_boolean_response(response)
 
