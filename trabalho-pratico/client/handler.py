@@ -1,4 +1,6 @@
 import os
+from ssl import SSLSocket
+import socket
 from bson import BSON
 from cryptography.hazmat.primitives import serialization
 import client.usage as usage
@@ -49,8 +51,8 @@ def handle_boolean_response(response: dict) -> bool:
     return response.get("type") == CommandType.SUCCESS.value
 
 
-def process_command(client_socket,  # TODO add type
-                    server_socket,  # TODO add type
+def process_command(client_socket: socket,
+                    server_socket: SSLSocket,
                     args: list,
                     client_private_key: bytes,
                     client_public_key: bytes):
