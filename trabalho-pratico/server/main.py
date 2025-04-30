@@ -38,7 +38,7 @@ def extract_user_id(cert):
     return None
 
 
-def handleClient(operations, conn: ssl.SSLSocket, addr, config):
+def handleClient(operations, conn: ssl.SSLSocket, addr, config, process_lock):
     print(f"🔗 Connection from {addr} established with mutual authentication.")
 
     try:
@@ -64,13 +64,15 @@ def handleClient(operations, conn: ssl.SSLSocket, addr, config):
                 encoding=serialization.Encoding.PEM,
                 format=serialization.PublicFormat.SubjectPublicKeyInfo
             )
-            operations.create_user(user_id, base64.b64encode(public_key).decode("utf-8"))
+            with process_lock:
+                operations.create_user(user_id, base64.b64encode(public_key).decode("utf-8"))
             print(f"✅ User {user_id} account created.")
 
             # Send welcome packet
             conn.send(create_packet(CommandType.AUTH_WELCOME.value))
         except UserExists:
-            config_client_public_key = base64.b64decode(config.config["users"][user_id]["public_key"])
+            with process_lock:
+                config_client_public_key = base64.b64decode(config.config["users"][user_id]["public_key"])
             if config_client_public_key == public_key:
                 # Send welcome back packet
                 conn.send(create_packet(CommandType.AUTH_WELCOME_BACK.value))
@@ -87,7 +89,8 @@ def handleClient(operations, conn: ssl.SSLSocket, addr, config):
 
         # Save the config in case a new user was created
         if G_CONFIG_DEBUG:
-            config.save(config=operations.config)
+            with process_lock:
+                config.save(config=operations.config)
 
         _died = False
         while True:
@@ -101,12 +104,13 @@ def handleClient(operations, conn: ssl.SSLSocket, addr, config):
                 trace("PACKET LEN:", len(packet_data), g_debug=G_DEBUG)
                 trace(packet_data, g_debug=G_DEBUG)
 
-                # TODO lock other threads from accessing the operations object
-                process_request(operations, user_id, conn, packet_data)
+                with process_lock:
+                    process_request(operations, user_id, conn, packet_data)
 
                 # DEBUG update the config file on every operation
                 if G_CONFIG_DEBUG:
-                    config.save(config=operations.config)
+                    with process_lock:
+                        config.save(config=operations.config)
             except ssl.SSLEOFError:
                 print(f"🚧 Client connection from {addr} died before server could close it.")
                 _died = True
@@ -183,6 +187,9 @@ def main():
 
         # Initalize server operations class
         operations = Operations(config.config, args.vault)
+        
+        # Create process lock
+        process_lock = threading.Lock()
     except Exception:
         print("Failed to set up server configuration.")
         traceback.print_exc()
@@ -198,7 +205,7 @@ def main():
                 while True:
                     try:
                         conn, addr = ssock.accept()
-                        client_thread = threading.Thread(target=handleClient, args=(operations, conn, addr, config))
+                        client_thread = threading.Thread(target=handleClient, args=(operations, conn, addr, config, process_lock))
                         client_thread.start()
                         # print(f"Active connections: {threading.active_count() - 1}")
                     except ssl.SSLCertVerificationError:
