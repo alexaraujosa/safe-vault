@@ -8,11 +8,13 @@ import argparse
 import readline
 import traceback
 from cryptography import x509
+from bson import BSON
 
 from common.keystore   import Keystore
 from common.validation import is_valid_file
 from client.encryption import RSA
 from client.handler    import process_command
+from common.packet     import read_fully, CommandType
 
 SERVER_ID = "VAULT_SERVER"
 HISTORY_SIZE = 100
@@ -57,7 +59,7 @@ def main():
 
     # Extract public key and private key from PKCS#12 file
     try:
-        client_private_key, client_public_key = RSA.load_keys_from_p12(p12_file)
+        client_private_key, client_public_key, client_cert = RSA.load_keys_from_p12(p12_file)
     except Exception as e:
         print(f"❌ Failed to load PKCS#12 file: {e}")
         sys.exit(1)
@@ -106,7 +108,24 @@ def main():
 
                 print(f"✅ Authenticated Server: {serverId}")
 
-                # TODO wait server response (USER_ID_ALREADY_EXISTS | SUCCESS)
+                auth_packet = BSON.decode(read_fully(ssock))
+                user_id = extractSubjectId(client_cert)
+                if user_id:
+                    match auth_packet.get("type"):
+                        case CommandType.AUTH_WELCOME.value:
+                            print(f"Welcome, {user_id}.")
+                        case CommandType.AUTH_WELCOME_BACK.value:
+                            print(f"Welcome back, {user_id}.")
+                        case CommandType.AUTH_USER_ALREADY_TOOK.value:
+                            print(f"Authentication failed!")
+                            print(f"The user id '{user_id}' already exists.")
+                            sys.exit(1)
+                        case CommandType.AUTH_FAIL.value:
+                            print(f"Invalid user id '{user_id}'.")
+                            sys.exit(1)
+                else:
+                    print(f"Error on authentication, due to empty user id on the provided certificate.")
+                    sys.exit(1)
 
                 setup_readline()
 

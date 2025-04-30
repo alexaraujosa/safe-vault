@@ -13,7 +13,7 @@ from cryptography.hazmat.primitives import serialization
 from common.exceptions import UserExists
 from common.keystore   import Keystore
 from common.validation import is_valid_file
-from common.packet     import read_fully
+from common.packet     import read_fully, create_packet, CommandType
 from server.config     import Config
 from server.operations import Operations
 from server.handler    import process_request
@@ -66,10 +66,22 @@ def handleClient(operations, conn: ssl.SSLSocket, addr, config):
             )
             operations.create_user(user_id, base64.b64encode(public_key).decode("utf-8"))
             print(f"✅ User {user_id} account created.")
+
+            # Send welcome packet
+            conn.send(create_packet(CommandType.AUTH_WELCOME.value))
         except UserExists:
-            # TODO validate if stored public key is the same on the config file
-            print(f"✅ User {user_id} authenticated.")
+            config_client_public_key = base64.b64decode(config.config["users"][user_id]["public_key"])
+            if config_client_public_key == public_key:
+                # Send welcome back packet
+                conn.send(create_packet(CommandType.AUTH_WELCOME_BACK.value))
+                print(f"✅ User {user_id} authenticated.")
+            else:
+                # Send user id already took packet
+                conn.send(create_packet(CommandType.AUTH_USER_ALREADY_TOOK.value))
+                print(f"❌ Attempt to authenticate as {user_id}, but detected different public key!")
+
         except ValueError:
+            conn.send(create_packet(CommandType.AUTH_FAIL.value))
             print(f"🚧 Invalid user ID: {user_id}.")
             exit(1)
 

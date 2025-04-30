@@ -48,9 +48,13 @@ class CommandType(Enum):
     GROUP_REMOVE_MODERATOR_REQUEST         = auto()
     DETAILS_REQUEST                        = auto()
     DETAILS_RESPONSE                       = auto()
+    AUTH_WELCOME                           = auto()
+    AUTH_WELCOME_BACK                      = auto()
+    AUTH_USER_ALREADY_TOOK                 = auto()
+    AUTH_FAIL                              = auto()
 
 
-def create_packet(p_type: int, payload: dict) -> bytes:
+def create_packet(p_type: int, payload: dict = {}) -> bytes:
     return BSON.encode({
         "version": PACKET_VERSION,
         "type": p_type,
