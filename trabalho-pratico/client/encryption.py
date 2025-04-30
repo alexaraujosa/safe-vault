@@ -84,7 +84,7 @@ class RSA:
         if not cert:
             raise ValueError("No certificate found in PKCS12 file")
 
-        return private_key, cert.public_key()
+        return private_key, cert.public_key(), cert
 
 
 if __name__ == "__main__":
@@ -129,7 +129,7 @@ if __name__ == "__main__":
         print("Usage: python3 encryption.py <key.p12>")
         sys.exit(1)
 
-    private_key, public_key = RSA.load_keys_from_p12(sys.argv[1], None)
+    private_key, public_key, cert = RSA.load_keys_from_p12(sys.argv[1], None)
     rsa_data = b"Hello, RSA with PKCS#12!"
     encrypted_rsa_data = RSA.encrypt(rsa_data, public_key)
     decrypted_rsa_data = RSA.decrypt(encrypted_rsa_data, private_key)
