@@ -226,10 +226,6 @@ def process_command(client_socket: socket,
             except Exception as e:
                 print(e)
 
-            new_content = read_file(file_path)
-            print(new_content)
-            # TODO Encrypt new content
-
         case "details":
             if len(args) != 2:
                 raise ValueError(f"Invalid arguments.\nUsage: {usage._details}")
