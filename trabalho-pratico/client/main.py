@@ -86,7 +86,10 @@ def main():
     except Exception:
         print("❌ Failed to set up SSL context.")
         traceback.print_exc()
+        cks.cleanup()
         sys.exit(1)
+    finally:
+        cks.cleanup()
 
     # Connection
     try:

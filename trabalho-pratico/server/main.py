@@ -172,7 +172,10 @@ def main():
     except Exception:
         print("❌ Failed to set up SSL context.")
         traceback.print_exc()
+        sks.cleanup()
         sys.exit(1)
+    finally:
+        sks.cleanup()
 
     try:
         # Load the JSON config file

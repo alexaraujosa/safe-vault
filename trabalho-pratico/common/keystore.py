@@ -1,12 +1,14 @@
 import cryptography.hazmat.primitives.serialization.pkcs12 as pkcs12
 from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, NoEncryption
-from tempfile import NamedTemporaryFile
+from tempfile import NamedTemporaryFile, mkdtemp
+import shutil
 
 
 class Keystore:
-    def __init__(self, tmpCertFile, tmpKeyFile):
+    def __init__(self, tmpCertFile, tmpKeyFile, tmp_dir):
         self.tmpCertFile = tmpCertFile
         self.tmpKeyFile = tmpKeyFile
+        self.tmp_dir = tmp_dir
 
     def getCertFile(self):
         return self.tmpCertFile.name
@@ -16,7 +18,7 @@ class Keystore:
 
     @classmethod
     def load(cls, ksPath) -> 'Keystore':
-        print("Attempting to load keystore:", ksPath)
+        # print("Attempting to load keystore:", ksPath)
         try:
             with open(ksPath, mode="rb") as skfile:
                 (pkey, cert, acerts) = pkcs12.load_key_and_certificates(skfile.read(), None)
@@ -24,26 +26,27 @@ class Keystore:
                     print("Invalid keystore.")
                     exit(1)
 
-                # TODO do not save the key in /tmp directory
-                # create a temporary dir with 700 permissions in the current directory instead
-                tmpKeyFile = NamedTemporaryFile(delete=False, suffix=".key")
+                tmp_dir = mkdtemp(prefix="keystore_", dir=".")
+                tmpKeyFile = NamedTemporaryFile(delete=False, dir=tmp_dir, suffix=".key")
                 tmpKeyFile.write(pkey.private_bytes(Encoding.PEM, PrivateFormat.PKCS8, NoEncryption()))
                 tmpKeyFile.flush()
 
-                tmpCertFile = NamedTemporaryFile(delete=False, suffix=".pem")
+                tmpCertFile = NamedTemporaryFile(delete=False, dir=tmp_dir, suffix=".pem")
                 tmpCertFile.write(cert.public_bytes(Encoding.PEM))
                 for ca in acerts:
                     tmpCertFile.write(ca.public_bytes(Encoding.PEM))
                 tmpCertFile.flush()
 
-                print("TMP KEY FILE:", tmpKeyFile.name)
-                print("TMP CERT FILE:", tmpCertFile.name)
+                # print("TMP DIR:", tmp_dir)
+                # print("TMP KEY FILE:", tmpKeyFile.name)
+                # print("TMP CERT FILE:", tmpCertFile.name)
 
-                return Keystore(tmpCertFile, tmpKeyFile)
+                return Keystore(tmpCertFile, tmpKeyFile, tmp_dir)
         except Exception as e:
             print(f"Error loading keystore: {e}")
             exit(1)
 
-    def close(self):
+    def cleanup(self):
         self.tmpCertFile.close()
         self.tmpKeyFile.close()
+        shutil.rmtree(self.tmp_dir, ignore_errors=True)
