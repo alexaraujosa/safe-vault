@@ -766,7 +766,7 @@ class Operations:
 
         # Check if the file exists in the group
         group_files = self.config["groups"][group_id]["files"]
-        if user_id not in group_files or file_id not in group_files[user_id]:
+        if user_id not in group_files and file_id not in group_files[user_id]:
             raise PermissionDenied(f"File {file_id} does not exist in group {group_id}.")
 
         # Delete the file from the group metadata

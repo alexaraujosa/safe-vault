@@ -17,7 +17,7 @@ _group_add_user         = "group add-user <group-id> <user-id> <permissions>"
 _group_delete_user      = "group delete-user <group-id> <user-id>"
 _group_list             = "group list"
 _group_add              = "group add <group-id> <file-path>"
-_group_delete_file      = "group delete <group-id> <file-id>"
+_group_delete_file      = "group delete-file <group-id> <file-id>"
 _group_add_moderator    = "group add-moderator <group-id> <user-id>"
 _group_remove_moderator = "group remove-moderator <group-id> <user-id>"
 

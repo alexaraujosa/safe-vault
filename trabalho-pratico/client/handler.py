@@ -446,6 +446,24 @@ def process_command(client_socket: socket,
                     response = receive_packet(server_socket)
                     handle_boolean_response(response)
 
+                case "delete-file":
+                    if len(args) != 4:
+                        raise ValueError(f"Invalid arguments.\nUsage: {usage._group_delete_file}")
+                    validate_params(group_id=(group_id := args[2]),
+                                    file_id=(file_id := args[3]))
+
+                    # Send group file deletion request to server
+                    packet = create_packet(CommandType.GROUP_DELETE_FILE_REQUEST.value,
+                                           {"group_id": group_id,
+                                            "file_id": file_id})
+                    server_socket.send(packet)
+
+                    # Await server response
+                    response = receive_packet(server_socket)
+                    handle_boolean_response(response)
+
+                # TODO change user permissions
+
                 case "add-moderator":
                     if len(args) != 4:
                         raise ValueError(f"Invalid arguments.\nUsage: {usage._group_add_moderator}")
@@ -500,7 +518,5 @@ def process_command(client_socket: socket,
                     raise ValueError(f"Invalid command: group '{group_command}'\n"
                                      f"{usage._group}")
 
-                # TODO change user permissions
-                # TODO delete-file
         case _:
             raise ValueError(f"Invalid command: '{command}'\n{usage._full}")

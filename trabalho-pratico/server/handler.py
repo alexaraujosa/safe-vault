@@ -223,9 +223,14 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 except Exception as e:
                     conn.send(create_error_packet(str(e)))
 
-            # case CommandType.GROUP_DELETE_FILE_REQUEST.value:
-            #     # TODO group delete-file
-            #     pass
+            case CommandType.GROUP_DELETE_FILE_REQUEST.value:
+                group_id = payload.get("group_id")
+                file_id  = payload.get("file_id")
+                try:
+                    operations.delete_file_from_group(current_user_id, group_id, file_id)
+                    conn.send(create_success_packet())
+                except Exception as e:
+                    conn.send(create_error_packet(str(e)))
 
             case CommandType.GROUP_ADD_MODERATOR_REQUEST.value:
                 user_id = payload.get("user_id")
