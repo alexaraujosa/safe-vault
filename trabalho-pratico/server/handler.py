@@ -49,7 +49,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 user_id     = payload.get("user_id")
                 permissions = payload.get("permissions")
                 try:
-                    public_key, file_key = operations.validate_share_user_file(current_user_id, file_id, user_id, permissions)
+                    public_key, file_key = operations.init_share_user_file(current_user_id, file_id, user_id, permissions)
 
                     intermediate_packet = create_packet(CommandType.SHARE_RESPONSE_VALIDATION.value,
                                                         {"public_key": base64.b64decode(public_key),
@@ -78,7 +78,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
             case CommandType.REPLACE_REQUEST_VALIDATION.value:
                 file_id = payload.get("file_id")
                 try:
-                    file_key = operations.validate_replace_file(current_user_id, file_id)
+                    file_key = operations.init_replace_file(current_user_id, file_id)
                     intermediate_packet = create_packet(CommandType.REPLACE_RESPONSE_VALIDATION.value,
                                                         {"key": base64.b64decode(file_key)})
                     conn.send(intermediate_packet)
@@ -246,7 +246,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 user_id = payload.get("user_id")
                 group_id = payload.get("group_id")
                 try:
-                    user_group_key, user_pub_key = operations.validate_add_moderator_to_group(current_user_id, group_id, user_id)
+                    user_group_key, user_pub_key = operations.init_add_moderator_to_group(current_user_id, group_id, user_id)
                     user_group_key = base64.b64decode(user_group_key)
                     user_pub_key = base64.b64decode(user_pub_key)
 

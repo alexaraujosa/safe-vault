@@ -227,8 +227,7 @@ class Operations:
 
         return files
 
-    # TODO rename to init_share_user_file
-    def validate_share_user_file(self,
+    def init_share_user_file(self,
                                  current_user_id: str,
                                  file_id: str,
                                  user_id_to_share: str,
@@ -781,8 +780,7 @@ class Operations:
     # Group Moderator Operations
     ###
 
-    # TODO rename to init_add_moderator_to_group
-    def validate_add_moderator_to_group(self,
+    def init_add_moderator_to_group(self,
                                         current_user_id: str,
                                         group_id: str,
                                         user_id: str) -> tuple[str, str]:
@@ -937,8 +935,7 @@ class Operations:
             "key": key
         }
 
-    # TODO rename to init_replace_file
-    def validate_replace_file(self,
+    def init_replace_file(self,
                               current_user_id: str,
                               file_id: str) -> None:
         validate_params(user_id=current_user_id,
