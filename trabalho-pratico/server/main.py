@@ -18,9 +18,13 @@ from server.config     import Config
 from server.operations import Operations
 from server.handler    import process_request
 
-from common.debug import G_SERVER_DEBUG as G_DEBUG
-from common.debug import trace
+from common.debug import (
+    G_SERVER_DEBUG as G_DEBUG,
+    G_SERVER_CONFIG_DEBUG as G_CONFIG_DEBUG,
+    trace
+)
 
+# Global variables
 CONFIG_PATH = "server/config.json"
 VAULT_PATH = "server/vault"
 
@@ -34,36 +38,44 @@ def extract_user_id(cert):
     return None
 
 
-def handleClient(operations, conn: ssl.SSLSocket, addr):
+def handleClient(operations, conn: ssl.SSLSocket, addr, config):
     print(f"🔗 Connection from {addr} established with mutual authentication.")
 
     try:
         # This following section is more of a trace than anything, tbh.
         # New users are just added to the database, so I guess it's just a way to extract the user id, ig.
         peerCert = conn.getpeercert(binary_form=True)
-        if peerCert:
-            peerCertObj = x509.load_der_x509_certificate(peerCert)
-            # Extract common name
-            user_id = extract_user_id(peerCertObj)
-            if (not user_id):
-                print("❌ Cannot extract user ID from certificate.")
-                conn.close()
-                return
+        if not peerCert:
+            print("❌ No peer certificate found.")
+            conn.close()
+            return
 
-            # Authenticate user and create account if not found
-            try:
-                public_key = peerCertObj.public_key().public_bytes(
-                    encoding=serialization.Encoding.PEM,
-                    format=serialization.PublicFormat.SubjectPublicKeyInfo
-                )
-                operations.create_user(user_id, base64.b64encode(public_key).decode("utf-8"))
-                print(f"✅ User {user_id} account created.")
-            except UserExists:
-                # TODO validate if stored public key is the same
-                print(f"✅ User {user_id} authenticated.")
-            except ValueError:
-                print(f"🚧 Invalid user ID: {user_id}.")
-                exit(1)
+        peerCertObj = x509.load_der_x509_certificate(peerCert)
+        # Extract common name
+        user_id = extract_user_id(peerCertObj)
+        if (not user_id):
+            print("❌ Cannot extract user ID from certificate.")
+            conn.close()
+            return
+
+        # Authenticate user and create account if not found
+        try:
+            public_key = peerCertObj.public_key().public_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo
+            )
+            operations.create_user(user_id, base64.b64encode(public_key).decode("utf-8"))
+            print(f"✅ User {user_id} account created.")
+        except UserExists:
+            # TODO validate if stored public key is the same on the config file
+            print(f"✅ User {user_id} authenticated.")
+        except ValueError:
+            print(f"🚧 Invalid user ID: {user_id}.")
+            exit(1)
+
+        # Save the config in case a new user was created
+        if G_CONFIG_DEBUG:
+            config.save(config=operations.config)
 
         _died = False
         while True:
@@ -79,6 +91,10 @@ def handleClient(operations, conn: ssl.SSLSocket, addr):
 
                 # TODO lock other threads from accessing the operations object
                 process_request(operations, user_id, conn, packet_data)
+
+                # DEBUG update the config file on every operation
+                if G_CONFIG_DEBUG:
+                    config.save(config=operations.config)
             except ssl.SSLEOFError:
                 print(f"🚧 Client connection from {addr} died before server could close it.")
                 _died = True
@@ -167,7 +183,7 @@ def main():
                 while True:
                     try:
                         conn, addr = ssock.accept()
-                        client_thread = threading.Thread(target=handleClient, args=(operations, conn, addr))
+                        client_thread = threading.Thread(target=handleClient, args=(operations, conn, addr, config))
                         client_thread.start()
                         # print(f"Active connections: {threading.active_count() - 1}")
                     except ssl.SSLCertVerificationError:
