@@ -778,6 +778,31 @@ class Operations:
     # Group Moderator Operations
     ###
 
+    def validate_add_moderator_to_group(self,
+                                        current_user_id: str,
+                                        group_id: str,
+                                        user_id: str) -> tuple[str, str]:
+
+        validate_params(user_ids=[current_user_id, user_id],
+                        group_id=group_id)
+        self.user_exists(current_user_id)
+        self.user_exists(user_id)
+        self.group_exists(group_id)
+
+        # Check if current user is the owner of the group
+        group = self.config["groups"][group_id]
+        is_owner = current_user_id == group["owner"]
+
+        if not is_owner:
+            raise PermissionDenied("Only the group owner can add moderators.")
+
+        # Check if the user is already a moderator
+        if user_id in group["moderators"]:
+            raise Exception(f"User {user_id} is already a moderator of group {group_id}.")
+        
+        return self.config["groups"][group_id]["members"][current_user_id]["key"], self.config["users"][user_id]["public_key"]
+
+
     def add_moderator_to_group(self,
                                current_user_id: str,
                                group_id: str,

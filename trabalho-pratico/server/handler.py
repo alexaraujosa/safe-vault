@@ -223,9 +223,45 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 except Exception as e:
                     conn.send(create_error_packet(str(e)))
 
-            case CommandType.GROUP_DELETE_FILE_REQUEST.value:
-                # TODO group delete-file
-                pass
+            # case CommandType.GROUP_DELETE_FILE_REQUEST.value:
+            #     # TODO group delete-file
+            #     pass
+
+            case CommandType.GROUP_ADD_MODERATOR_REQUEST.value:
+                user_id = payload.get("user_id")
+                group_id = payload.get("group_id")
+                try:
+                    user_group_key, user_pub_key = operations.validate_add_moderator_to_group(current_user_id, group_id, user_id)
+                    user_group_key = base64.b64decode(user_group_key)
+                    user_pub_key = base64.b64decode(user_pub_key)
+
+                    intermediate_packet = create_packet(CommandType.GROUP_ADD_MODERATOR_RESPONSE_WITH_KEYS.value,
+                                                        {"group_key": user_group_key,
+                                                         "public_key": user_pub_key})
+                    conn.send(intermediate_packet)
+
+                    # Await client response with group key encrypted with user public key
+                    client_response_packet = receive_packet(conn)
+
+                    group_key = base64.b64encode(client_response_packet.get("payload").get("key")).decode("utf-8")
+                    operations.add_moderator_to_group(current_user_id, group_id, user_id, group_key)
+                    response = create_success_packet(f"Successfully added user '{user_id}' as a moderator on group '{group_id}'.")
+                except Exception as e:
+                    response = create_error_packet(str(e))
+                finally:
+                    conn.send(response)
+
+            case CommandType.GROUP_REMOVE_MODERATOR_REQUEST.value:
+                group_id = payload.get("group_id")
+                moderator_id = payload.get("moderator_id")
+                try:
+                    operations.remove_moderator_from_group(current_user_id, group_id, moderator_id)
+
+                    response = create_success_packet(f"Successfully demoted moderator '{moderator_id}' from group '{group_id}'.")
+                except Exception as e:
+                    response = create_error_packet(str(e))
+                finally:
+                    conn.send(response)
 
     except Exception as e:
         print(e)

@@ -41,6 +41,10 @@ class CommandType(Enum):
     NEED_CONFIRMATION         = auto()
     CONFIRM                   = auto()
     ABORT                     = auto()
+    GROUP_ADD_MODERATOR_REQUEST = auto()
+    GROUP_ADD_MODERATOR_REQUEST_FINAL = auto()
+    GROUP_ADD_MODERATOR_RESPONSE_WITH_KEYS = auto()
+    GROUP_REMOVE_MODERATOR_REQUEST = auto()
 
     DETAILS_REQUEST           = auto()
     DETAILS_RESPONSE          = auto()

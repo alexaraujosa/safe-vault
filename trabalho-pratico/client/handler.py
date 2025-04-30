@@ -437,6 +437,57 @@ def process_command(client_socket,  # TODO add type
                     response = receive_packet(server_socket)
                     handle_boolean_response(response)
 
+                
+                case "add-moderator":
+                    if len(args) != 4:
+                        raise ValueError(f"Invalid arguments.\nUsage: {usage._group_add_moderator}")    # TODO define usage
+                    validate_params(group_id=(group_id := args[2]),
+                                    user_id=(user_id := args[3]))
+
+                    # Send user id to be promoted to the server
+                    packet = create_packet(CommandType.GROUP_ADD_MODERATOR_REQUEST.value,
+                                           {"group_id": group_id,
+                                            "user_id": user_id})
+                    server_socket.send(packet)
+                    
+                    # Await server response
+                    response = receive_packet(server_socket)
+                    if response.get("type") == CommandType.GROUP_ADD_MODERATOR_RESPONSE_WITH_KEYS.value:
+                        group_key_enc = response.get("payload").get("group_key")
+                        user_pub_key_bytes = response.get("payload").get("public_key")
+                        user_pub_key = serialization.load_pem_public_key(user_pub_key_bytes)
+
+                        # Decrypt the group master key with the current user private key
+                        group_key_dec = RSA.decrypt(group_key_enc, client_private_key)
+
+                        # Encrypt the group master key with the moderator public key
+                        group_key_enc = RSA.encrypt(group_key_dec, user_pub_key)
+
+                        packet_add_moderator = create_packet(CommandType.GROUP_ADD_MODERATOR_REQUEST_FINAL.value,
+                                                             {"key": group_key_enc})
+                        server_socket.send(packet_add_moderator)
+
+                        # Await server response
+                        response = receive_packet(server_socket)
+                        handle_boolean_response(response)
+                    else:
+                        handle_boolean_response(response)
+
+                case "remove-moderator":
+                    if len(args) != 4:
+                        raise ValueError(f"Invalid arguments.\nUsage: {usage._group_remove_moderator}") # TODO define usage
+                    validate_params(group_id=(group_id := args[2]),
+                                    user_id=(user_id := args[3]))
+
+                    # Send user id to be promoted to server
+                    packet = create_packet(CommandType.GROUP_REMOVE_MODERATOR_REQUEST.value,
+                                           {"group_id": group_id,
+                                            "moderator_id": user_id})
+                    server_socket.send(packet)
+                    
+                    # Await server response
+                    response = receive_packet(server_socket)
+                    handle_boolean_response(response)
                 case _:
                     raise ValueError(f"Invalid command: group '{group_command}'\n"
                                      f"{usage._group}")
