@@ -41,6 +41,7 @@ class CommandType(Enum):
     INIT_GROUP_ADD_RESPONSE                = auto()
     GROUP_ADD_REQUEST                      = auto()
     GROUP_DELETE_FILE_REQUEST              = auto()
+    GROUP_CHANGE_PERMISSIONS_REQUEST       = auto()
     GROUP_ADD_MODERATOR_REQUEST            = auto()
     GROUP_ADD_MODERATOR_REQUEST_FINAL      = auto()
     GROUP_ADD_MODERATOR_RESPONSE_WITH_KEYS = auto()

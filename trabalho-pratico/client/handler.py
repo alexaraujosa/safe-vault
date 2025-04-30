@@ -119,6 +119,7 @@ def process_command(client_socket: socket,
             elif CommandType.LIST_RESPONSE.value:
                 if len(payload) == 0:
                     print("No files found.")
+                    return
 
                 match rest:
                     case []:
@@ -462,7 +463,23 @@ def process_command(client_socket: socket,
                     response = receive_packet(server_socket)
                     handle_boolean_response(response)
 
-                # TODO change user permissions
+                case "change-permissions":
+                    if len(args) != 5:
+                        raise ValueError(f"Invalid arguments.\nUsage: {usage._group_change_permissions}")
+                    validate_params(group_id=(group_id := args[2]),
+                                    user_id=(user_id := args[3]),
+                                    permissions=(permissions := args[4]))
+
+                    # Send group file deletion request to server
+                    packet = create_packet(CommandType.GROUP_CHANGE_PERMISSIONS_REQUEST.value,
+                                           {"group_id": group_id,
+                                            "user_id": user_id,
+                                            "permissions": permissions})
+                    server_socket.send(packet)
+
+                    # Await server response
+                    response = receive_packet(server_socket)
+                    handle_boolean_response(response)
 
                 case "add-moderator":
                     if len(args) != 4:

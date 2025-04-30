@@ -232,6 +232,16 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 except Exception as e:
                     conn.send(create_error_packet(str(e)))
 
+            case CommandType.GROUP_CHANGE_PERMISSIONS_REQUEST.value:
+                group_id    = payload.get("group_id")
+                user_id     = payload.get("user_id")
+                permissions = payload.get("permissions")
+                try:
+                    operations.change_user_group_permissions(current_user_id, group_id, user_id, permissions)
+                    conn.send(create_success_packet())
+                except Exception as e:
+                    conn.send(create_error_packet(str(e)))
+
             case CommandType.GROUP_ADD_MODERATOR_REQUEST.value:
                 user_id = payload.get("user_id")
                 group_id = payload.get("group_id")

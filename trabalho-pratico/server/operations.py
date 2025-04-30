@@ -546,6 +546,9 @@ class Operations:
         if user_id in group["moderators"]:
             raise PermissionDenied(f"User {user_id} is already a moderator of group {group_id}.")
 
+        # Define default success message
+        message = f"User {user_id} added to group {group_id} with permissions {permissions}."
+
         # Check if the user is already in the group, if so return a message to client
         if user_id in group["members"]:
             message = f"User {user_id} is already in group {group_id}.\n" \
