@@ -94,18 +94,17 @@ def main():
                 print(f"Socket Version: {ssock.version()}")
 
                 peerCert = ssock.getpeercert(binary_form=True)
-                if peerCert:
-                    peerCertObj = x509.load_der_x509_certificate(peerCert)
-                    serverId = extractSubjectId(peerCertObj)
-
-                    if (serverId is None or serverId != SERVER_ID):
-                        print("❌ Invalid Server ID.")
-                        raise Exception
-
-                    print(f"✅ Authenticated Server: {serverId}")
-                else:
+                if not peerCert:
                     print("❌ Failed to get peer certificate.")
-                    raise Exception
+                    exit(1)
+
+                peerCertObj = x509.load_der_x509_certificate(peerCert)
+                serverId = extractSubjectId(peerCertObj)
+                if serverId != SERVER_ID:
+                    print("❌ Invalid Server ID.")
+                    exit(1)
+
+                print(f"✅ Authenticated Server: {serverId}")
 
                 # TODO wait server response (USER_ID_ALREADY_EXISTS | SUCCESS)
 
