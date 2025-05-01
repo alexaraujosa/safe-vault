@@ -8,12 +8,29 @@ from client.encryption import RSA, AES_GCM
 from common.validation import validate_params
 from common.packet import (
     CommandType,
+    LogsStatus,
     create_packet,
     create_confirm_packet,
     create_abort_packet,
     receive_packet,
 )
 
+def print_logs(logs: list) -> None:
+    print("Logs:")
+    for log in logs:
+        parts = [
+            log.get("executor"),
+            log.get("time"),
+            LogsStatus(log.get("status")).name,
+            log.get("command")
+        ]
+
+        if "file_id" in log:
+            parts.append(log["file_id"])
+        if "group_id" in log:
+            parts.append(log["group_id"])
+
+        print("|-|".join(parts))
 
 def read_file(file_path: str) -> bytes:
     """
@@ -553,6 +570,77 @@ def process_command(client_socket: socket,
                 case _:
                     raise ValueError(f"Invalid command: group '{group_command}'\n"
                                      f"{usage._group}")
+        case "logs":
+            if len(args) < 2:
+                raise ValueError(f"Invalid arguments.\nUsage: {usage._logs}")
 
+            logs_command = args[1]
+            match logs_command:
+                case "global":
+                    if len(args) == 2:
+                        # Send user id to the server
+                        packet = create_packet(CommandType.LOGS_GLOBAL_REQUEST.value)
+                        server_socket.send(packet)
+
+                        # Await server response
+                        response = receive_packet(server_socket)
+                        if response.get("type") == CommandType.LOGS_GLOBAL_RESPONSE.value:
+                            print_logs(response.get("payload").get("logs"))
+                        else:
+                            handle_boolean_response(response)
+                    elif len(args) == 4:
+                        if args[2] == "-g":
+                            validate_params(group_id=(group_id := args[3]))
+
+                            # Send group id to the server
+                            packet = create_packet(CommandType.LOGS_GROUP_OWNER_REQUEST.value,
+                                                   {"group_id": group_id})
+                            server_socket.send(packet)
+
+                            # Await server response
+                            response = receive_packet(server_socket)
+                            if response.get("type") == CommandType.LOGS_GROUP_OWNER_RESPONSE.value:
+                                print_logs(response.get("payload").get("logs"))
+                            else:
+                                handle_boolean_response(response)
+                        else:
+                            raise ValueError(f"Invalid arguments.\nUsage: {usage._logs_user_global}")
+                    else:
+                        raise ValueError(f"Invalid arguments.\nUsage: {usage._logs_user_global}")
+                case "file":
+                    if len(args) != 3:
+                        raise ValueError(f"Invalid arguments.\nUsage: {usage._logs_user_file}")
+                    validate_params(file_id=(file_id := args[2]))
+
+                    # Send file id to the server
+                    packet = create_packet(CommandType.LOGS_FILE_REQUEST.value,
+                                           {"file_id": file_id})
+                    server_socket.send(packet)
+
+                    # Await server response
+                    response = receive_packet(server_socket)
+                    if response.get("type") == CommandType.LOGS_FILE_RESPONSE.value:
+                        print_logs(response.get("payload").get("logs"))
+                    else:
+                        handle_boolean_response(response)
+                case "group":
+                    if len(args) != 3:
+                        raise ValueError(f"Invalid arguments.\nUsage: {usage._logs}")
+
+                    validate_params(group_id=(group_id := args[2]))
+                    
+                    # Send group id to the server
+                    packet = create_packet(CommandType.LOGS_GROUP_REQUEST.value,
+                                            {"group_id": group_id})
+                    server_socket.send(packet)
+
+                    # Await server response
+                    response = receive_packet(server_socket)
+                    if response.get("type") == CommandType.LOGS_GROUP_RESPONSE.value:
+                        print_logs(response.get("payload").get("logs"))
+                    else:
+                        handle_boolean_response(response)
+                case _:
+                    raise ValueError(f"Invalid arguments.\nUsage: {usage._logs}")
         case _:
             raise ValueError(f"Invalid command: '{command}'\n{usage._full}")

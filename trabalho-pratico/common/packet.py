@@ -7,6 +7,9 @@ from common.debug import G_DEBUG_PACKET_READ_FULLY
 
 PACKET_VERSION = 1
 
+class LogsStatus(Enum):
+    SUCCESS = auto()
+    FAILURE = auto()
 
 class CommandType(Enum):
     SUCCESS                                = auto()
@@ -52,6 +55,14 @@ class CommandType(Enum):
     AUTH_WELCOME_BACK                      = auto()
     AUTH_USER_ALREADY_TOOK                 = auto()
     AUTH_FAIL                              = auto()
+    LOGS_GLOBAL_REQUEST                    = auto()
+    LOGS_GLOBAL_RESPONSE                   = auto()
+    LOGS_FILE_REQUEST                      = auto()
+    LOGS_FILE_RESPONSE                     = auto()
+    LOGS_GROUP_REQUEST                     = auto()
+    LOGS_GROUP_RESPONSE                    = auto()
+    LOGS_GROUP_OWNER_REQUEST               = auto()
+    LOGS_GROUP_OWNER_RESPONSE              = auto()
 
 
 def create_packet(p_type: int, payload: dict = {}) -> bytes:

@@ -13,10 +13,11 @@ from cryptography.hazmat.primitives import serialization
 from common.exceptions import UserExists
 from common.keystore   import Keystore
 from common.validation import is_valid_file
-from common.packet     import read_fully, create_packet, CommandType
+from common.packet     import read_fully, create_packet, CommandType, LogsStatus
 from server.config     import Config
-from server.operations import Operations
+from server.operations import Operations, get_current_timestamp
 from server.handler    import process_request
+from server.logs       import Logs
 
 from common.debug import (
     G_SERVER_DEBUG as G_DEBUG,
@@ -26,7 +27,8 @@ from common.debug import (
 
 # Global variables
 CONFIG_PATH = "server/config.json"
-VAULT_PATH = "server/vault"
+LOGS_PATH   = "server/logs.json"
+VAULT_PATH  = "server/vault"
 
 
 def extract_user_id(cert):
@@ -66,19 +68,38 @@ def handleClient(operations, conn: ssl.SSLSocket, addr, config, process_lock):
             )
             with process_lock:
                 operations.create_user(user_id, base64.b64encode(public_key).decode("utf-8"))
+                operations.logs["users"][user_id] = []
+                operations.logs["users"][user_id].append({
+                    "executor": "system",
+                    "time": get_current_timestamp(),
+                    "status": LogsStatus.SUCCESS.value,
+                    "command": f"create user"
+                })
             print(f"✅ User {user_id} account created.")
 
             # Send welcome packet
             conn.send(create_packet(CommandType.AUTH_WELCOME.value))
         except UserExists:
             with process_lock:
-                config_client_public_key = base64.b64decode(config.config["users"][user_id]["public_key"])
+                config_client_public_key = base64.b64decode(config.config["users"][user_id]["public_key"]) 
             if config_client_public_key == public_key:
                 # Send welcome back packet
+                operations.logs["users"][user_id].append({
+                    "executor": "system",
+                    "time": get_current_timestamp(),
+                    "status": LogsStatus.SUCCESS.value,
+                    "command": f"authenticate user"
+                })
                 conn.send(create_packet(CommandType.AUTH_WELCOME_BACK.value))
                 print(f"✅ User {user_id} authenticated.")
             else:
                 # Send user id already took packet
+                operations.logs["users"][user_id].append({
+                    "executor": "system",
+                    "time": get_current_timestamp(),
+                    "status": LogsStatus.FAILURE.value,
+                    "command": f"authenticate user"
+                })
                 conn.send(create_packet(CommandType.AUTH_USER_ALREADY_TOOK.value))
                 print(f"❌ Attempt to authenticate as {user_id}, but detected different public key!")
 
@@ -136,6 +157,7 @@ def main():
     parser.add_argument("--port",        type=int, required=False, default=8443,        help="Port to server listen on.")
     parser.add_argument("--config",      type=str, required=False, default=CONFIG_PATH, help="Path to server's config file.")
     parser.add_argument("--vault",       type=str, required=False, default=VAULT_PATH,  help="Path to server's vault directory.")
+    parser.add_argument("--logs",        type=str, required=False, default=LOGS_PATH,   help="Path to server's log file.")
     parser.add_argument(
         "--debug", "-d",
         action=argparse.BooleanOptionalAction, required=False, default=False,
@@ -185,9 +207,12 @@ def main():
         # Load the JSON config file
         config = Config(args.config)
 
-        # Initalize server operations class
-        operations = Operations(config.config, args.vault)
-        
+        # Initialize server logs
+        logs = Logs(args.logs)
+
+        # Initialize server operations class
+        operations = Operations(config.config, logs.logs, args.vault)
+
         # Create process lock
         process_lock = threading.Lock()
     except Exception:
@@ -234,6 +259,13 @@ def main():
         config.save(config=operations.config)
     except Exception as e:
         print(f"Failed to save server config: {e}")
+        sys.exit(1)
+
+    # Save log file
+    try:
+        logs.save(logs=operations.logs)
+    except Exception as e:
+        print(f"Failed to save log file: {e}")
         sys.exit(1)
 
 

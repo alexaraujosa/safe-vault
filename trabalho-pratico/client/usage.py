@@ -1,5 +1,3 @@
-# TODO add logs
-
 # Client commands usage
 _add                      = "add <file-path>"
 _list                     = "list [-u user_id | -g group_id]"
@@ -22,6 +20,11 @@ _group_change_permissions = "group change-permissions <group-id> <user-id> <perm
 _group_add_moderator      = "group add-moderator <group-id> <user-id>"
 _group_remove_moderator   = "group remove-moderator <group-id> <user-id>"
 
+# Log commands usage
+_logs_user_global  = "logs global [-g group_id]"
+_logs_user_file    = "logs file <file-id>"
+_logs_user_group   = "logs group <group-id>"
+
 _group = f"""
 Group commands usage:
     {_group_create}
@@ -36,6 +39,13 @@ Group commands usage:
     {_group_remove_moderator}
 """
 
+_logs = f"""
+Log commands usage:
+    {_logs_user_global}
+    {_logs_user_file}
+    {_logs_user_group}
+"""
+
 # Full usage
 _full = f"""
 Client commands usage:
@@ -48,8 +58,7 @@ Client commands usage:
     {_revoke}
     {_read}
 {_group}
-Logs commands usage:
-    TODO
+{_logs}
 Other commands:
     exit
 """
