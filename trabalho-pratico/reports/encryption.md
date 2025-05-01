@@ -1,5 +1,10 @@
 # Encryption Plan
 
+**TODO** adicionar nota sobre a reencriptação de chaves e conteúdos em revogações,
+explicar o processo em diferentes casos, e o porquê de não o termos feito
+(ACL garante + eficiência de revogação). num ambiente de produção deve-se ponderar
+esta reencriptação.
+
 ## 1. Key Management
 
 ### Client-side
