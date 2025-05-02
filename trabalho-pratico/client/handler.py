@@ -15,6 +15,7 @@ from common.packet import (
     receive_packet,
 )
 
+
 def print_logs(logs: list) -> None:
     print("Logs:")
     for log in logs:
@@ -31,6 +32,7 @@ def print_logs(logs: list) -> None:
             parts.append(log["group_id"])
 
         print("|-|".join(parts))
+
 
 def read_file(file_path: str) -> bytes:
     """
@@ -319,6 +321,7 @@ def process_command(client_socket: socket,
                 print(f"content:\n{content.decode()}")
             else:
                 handle_boolean_response(response)
+
         case "group":
             if len(args) < 2:
                 raise ValueError(f"Invalid arguments.\nUsage: {usage._group}")
