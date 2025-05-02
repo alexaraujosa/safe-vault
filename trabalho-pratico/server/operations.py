@@ -562,7 +562,8 @@ class Operations:
         }
 
         # Add the group to the user's groups
-        self.config["users"][user_id]["groups"].append(group_id)
+        if group_id not in self.config["users"][user_id]["groups"]:
+            self.config["users"][user_id]["groups"].append(group_id)
 
         return message
 
