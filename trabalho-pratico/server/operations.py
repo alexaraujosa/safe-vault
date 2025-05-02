@@ -1124,12 +1124,18 @@ class Operations:
             if len(self.config["users"][current_user_id]["shared_files"][file_owner_id]) == 0:
                 del self.config["users"][current_user_id]["shared_files"][file_owner_id]
 
+            # Delete the shared user entry on file acl
+            del self.config["users"][file_owner_id]["files"][file_name]["acl"]["users"][current_user_id]
+
         elif len(groups_to_remove_file) > 0:
             # Delete the file from the group entries
             for group_id in groups_to_remove_file:
                 self.config["groups"][group_id]["files"][file_owner_id].remove(file_name)
                 if len(self.config["groups"][group_id]["files"][file_owner_id]) == 0:
                     del self.config["groups"][group_id]["files"][file_owner_id]
+                
+                # Delete the group entry on file acl
+                self.config["users"][file_owner_id]["files"][file_name]["acl"]["groups"].remove(group_id)
 
     ###
     # Logs Operations
