@@ -25,10 +25,12 @@ from common.debug import (
     trace
 )
 
-# Global variables
-CONFIG_PATH = "server/config.json"
-LOGS_PATH   = "server/logs.json"
-VAULT_PATH  = "server/vault"
+# Constants
+DEFAULT_CA   = "assets/certs/VAULT_CA.crt"  # Default path for server CA certificate
+DEFATULT_P12 = "assets/keystores/VAULT_SERVER.p12"  # Default path for server keystore
+CONFIG_PATH  = "server/config.json"
+LOGS_PATH    = "server/logs.json"
+VAULT_PATH   = "server/vault"
 
 
 def extract_user_id(cert):
@@ -151,31 +153,24 @@ def handleClient(operations, conn: ssl.SSLSocket, addr, config, process_lock):
 def main():
     # Command line arguments
     parser = argparse.ArgumentParser("server")
-    parser.add_argument("--cert",        type=str, required=True,                       help="Path to server's CA certificate.")
-    parser.add_argument("--keystore",    type=str, required=True,                       help="Path to server's keystore file.")
-    parser.add_argument("--port",        type=int, required=False, default=8443,        help="Port to server listen on.")
-    parser.add_argument("--config",      type=str, required=False, default=CONFIG_PATH, help="Path to server's config file.")
-    parser.add_argument("--vault",       type=str, required=False, default=VAULT_PATH,  help="Path to server's vault directory.")
-    parser.add_argument("--logs",        type=str, required=False, default=LOGS_PATH,   help="Path to server's log file.")
-    parser.add_argument(
-        "--debug", "-d",
-        action=argparse.BooleanOptionalAction, required=False, default=False,
-        help="Whether the server should output debug traces."
-    )
+    parser.add_argument("--cert",        type=str, required=False, default=DEFAULT_CA,   help="Server CA certificate file.")
+    parser.add_argument("--keystore",    type=str, required=False, default=DEFATULT_P12, help="Server keystore file.")
+    parser.add_argument("--port",        type=int, required=False, default=8443,         help="Port number to listen on.")
+    parser.add_argument("--config",      type=str, required=False, default=CONFIG_PATH,  help="Config file path.")
+    parser.add_argument("--vault",       type=str, required=False, default=VAULT_PATH,   help="Vault file path.")
+    parser.add_argument("--logs",        type=str, required=False, default=LOGS_PATH,    help="Logs file path.")
+    parser.add_argument("--debug", "-d",           required=False, default=False,        help="Enable debug mode.", action=argparse.BooleanOptionalAction)
     args = parser.parse_args()
 
+    # Validate command line arguments
     global G_DEBUG
     G_DEBUG = args.debug
 
-    ca_cert_file = args.cert
-    p12_file = args.keystore
-    port = args.port
-
-    if not (1 <= port <= 65535):
+    if not (1 <= args.port <= 65535):
         print("❌ Invalid port number. Must be between 1 and 65535.")
         sys.exit(1)
 
-    for file in [ca_cert_file, p12_file]:
+    for file in [args.cert, args.keystore]:
         if not is_valid_file(file):
             print(f"❌ Invalid file: {file}.")
             sys.exit(1)
@@ -184,11 +179,11 @@ def main():
     try:
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         # Load .p12 file
-        sks = Keystore.load(p12_file)
+        sks = Keystore.load(args.keystore)
         # Load server certificate and private key
         context.load_cert_chain(certfile=sks.getCertFile(), keyfile=sks.getKeyFile())
         # Load trustable CA
-        context.load_verify_locations(cafile=ca_cert_file)
+        context.load_verify_locations(cafile=args.cert)
         # Verify if the client certificate is signed by a trusted CA
         context.verify_mode = ssl.CERT_REQUIRED
 
@@ -222,9 +217,9 @@ def main():
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             with context.wrap_socket(sock, server_side=True) as ssock:
-                ssock.bind(("127.0.0.1", port))
+                ssock.bind(("127.0.0.1", args.port))
                 ssock.listen()
-                print(f"📡 Server listening on port {port}")
+                print(f"📡 Server listening on port {args.port}")
 
                 while True:
                     try:
@@ -245,7 +240,7 @@ def main():
         sys.exit(1)
     except OSError as e:
         if e.errno == 98:
-            print(f"❌ Port {port} already in use.")
+            print(f"❌ Port {args.port} already in use.")
         else:
             print(f"❌ Failed to bind socket: {e}")
         sys.exit(1)
