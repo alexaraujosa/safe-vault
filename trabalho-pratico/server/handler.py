@@ -269,7 +269,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                     response = create_packet(CommandType.READ_RESPONSE.value,
                                              {"content": file_content,
                                               "key": file_key})
-                    
+
                     operations.logs["users"][current_user_id].append({
                             "executor": current_user_id,
                             "time": get_current_timestamp(),
@@ -399,7 +399,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                     if client_response.get("type") == CommandType.CONFIRM.value:
                         try:
                             operations.remove_user_from_group(current_user_id, group_id, user_id, True)
-                            
+
                             timestamp = get_current_timestamp()
                             operations.logs["users"][current_user_id].append({
                                 "executor": current_user_id,
@@ -443,8 +443,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                         "executor": current_user_id,
                         "time": get_current_timestamp(),
                         "status": LogsStatus.SUCCESS.value,
-                        "command": "group list",
-                        "group_id": group_id
+                        "command": "group list"
                     })
                     conn.send(create_success_packet(message=group_info))
                 except Exception as e:
@@ -452,8 +451,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                         "executor": current_user_id,
                         "time": get_current_timestamp(),
                         "status": LogsStatus.FAILURE.value,
-                        "command": "group list",
-                        "group_id": group_id
+                        "command": "group list"
                     })
                     conn.send(create_error_packet(str(e)))
 
@@ -644,7 +642,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                     response = create_error_packet(str(e))
                 finally:
                     conn.send(response)
-            
+
             case CommandType.LOGS_GLOBAL_REQUEST.value:
                 try:
                     logs = operations.list_user_logs(current_user_id)
@@ -675,7 +673,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 except Exception as e:
                     response = create_error_packet(str(e))
                 finally:
-                    conn.send(response) 
+                    conn.send(response)
 
             case CommandType.LOGS_GROUP_OWNER_REQUEST.value:
                 try:
@@ -686,7 +684,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 except Exception as e:
                     response = create_error_packet(str(e))
                 finally:
-                    conn.send(response) 
+                    conn.send(response)
 
     except Exception as e:
         print(e)
