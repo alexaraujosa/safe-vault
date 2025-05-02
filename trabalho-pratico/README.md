@@ -25,6 +25,7 @@ TODO
 - Context do módulo SSL (referindo pormenorizadamente sobre os certificados)
 - Validação de certificados (campos)
 - Validação de certificados dos dois lados do canal de comunicação (referindo o propósito e os ataques que bloqueia)
+- Bloqueio de ataques reply/mitm
 - Geração de certificados no lado do servidor
 TODO
 
