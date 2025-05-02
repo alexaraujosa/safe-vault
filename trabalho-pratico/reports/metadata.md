@@ -117,6 +117,9 @@ inicializado.
         quais os grupos a que um ficheiro pertence. O módulo `server.operations`
         é responsável por garantir a consistência desses dados.
 
+5. **Compatibilidade**:
+    - TODO
+
 No próximo capítulo aprofundar-se-á como o ficheiro de metadata é utilizado
 aquando diferentes comandos do cliente são executados, também abordar-se-á
 o conceito introduzido de moderador de um grupo e comandos adicionais aos
