@@ -6,6 +6,7 @@ import shlex
 import socket
 import argparse
 import readline
+import atexit
 import traceback
 from cryptography import x509
 from bson import BSON
@@ -31,12 +32,27 @@ def extractSubjectId(cert):
     return None
 
 
-def setup_readline():
-    readline.set_history_length(HISTORY_SIZE)
-    readline.set_auto_history(False)
+def setup_readline(user_id: str):
+    history_file = f".{user_id}_history"
+
+    # Set up tab completion and other readline features
     readline.parse_and_bind("tab: complete")
     readline.parse_and_bind("set blink-matching-paren on")
 
+    # Set history length
+    readline.set_history_length(HISTORY_SIZE)
+
+    # Try to load history file
+    try:
+        readline.read_history_file(history_file)
+    except FileNotFoundError:
+        # Create empty history file if it doesn't exist
+        open(history_file, 'a').close()
+    except Exception as e:
+        print(f"Warning: Could not load history file: {e}")
+
+    # Save history on exit
+    atexit.register(readline.write_history_file, history_file)
 
 def main():
     parser = argparse.ArgumentParser("client")
@@ -130,7 +146,7 @@ def main():
                     print("Error on authentication, due to empty user id on the provided certificate.")
                     sys.exit(1)
 
-                setup_readline()
+                setup_readline(user_id)
 
                 doubleSIGINT = False
                 while True:
@@ -149,7 +165,6 @@ def main():
                     except EOFError:
                         break
 
-                    readline.add_history(command)
                     doubleSIGINT = False
                     args = shlex.split(command)
 
