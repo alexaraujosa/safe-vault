@@ -35,7 +35,7 @@ def extract_user_id(cert):
     subject = cert.subject
 
     for attr in subject:
-        if attr.oid == x509.NameOID.COMMON_NAME:
+        if attr.oid == x509.NameOID.PSEUDONYM:
             return attr.value
     return None
 
