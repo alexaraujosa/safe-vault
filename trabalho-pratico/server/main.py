@@ -217,7 +217,7 @@ def main():
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             with context.wrap_socket(sock, server_side=True) as ssock:
-                ssock.bind(("127.0.0.1", args.port))
+                ssock.bind(("0.0.0.0", args.port))
                 ssock.listen()
                 print(f"📡 Server listening on port {args.port}")
 
