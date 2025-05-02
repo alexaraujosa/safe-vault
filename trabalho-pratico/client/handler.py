@@ -1,14 +1,14 @@
 import os
-from ssl import SSLSocket
 import socket
+from ssl import SSLSocket
 from bson import BSON
 from cryptography.hazmat.primitives import serialization
 import client.usage as usage
 from client.encryption import RSA, AES_GCM
+from client.tabulate   import tabulate
 from common.validation import validate_params
 from common.packet import (
     CommandType,
-    LogsStatus,
     create_packet,
     create_confirm_packet,
     create_abort_packet,
@@ -17,21 +17,7 @@ from common.packet import (
 
 
 def print_logs(logs: list) -> None:
-    print("Logs:")
-    for log in logs:
-        parts = [
-            log.get("executor"),
-            log.get("time"),
-            LogsStatus(log.get("status")).name,
-            log.get("command")
-        ]
-
-        if "file_id" in log:
-            parts.append(log["file_id"])
-        if "group_id" in log:
-            parts.append(log["group_id"])
-
-        print("|-|".join(parts))
+    print(tabulate(logs, headers="keys", tablefmt="rounded_outline"))
 
 
 def read_file(file_path: str) -> bytes:

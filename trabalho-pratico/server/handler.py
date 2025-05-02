@@ -1,11 +1,10 @@
 import ssl
 import json
 import base64
-from server.operations import Operations, get_current_timestamp
+from server.operations import Operations
 from common.exceptions import NeedConfirmation
 from common.packet import (
     CommandType,
-    LogsStatus,
     create_packet,
     create_success_packet,
     create_error_packet,
@@ -17,7 +16,7 @@ from common.packet import (
 
 def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLSocket, packet_data: bytes):
     try:
-        packet = decode_packet(packet_data)
+        packet = decode_packet(packet_data)  # TODO decode_packet before calling process_request
         payload = packet.get("payload")
         match packet.get("type"):
             case CommandType.ADD_REQUEST.value:
@@ -25,87 +24,41 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 file_key = payload.get("key")
                 size     = payload.get("size")
                 filename = payload.get("filename")
+                file_id = f"{current_user_id}:{filename}"
                 try:
                     file_key = base64.b64encode(file_key).decode("utf-8")
                     operations.add_file_to_user(current_user_id, filename, content, file_key, size)
                     conn.send(create_success_packet(f"File ID: {current_user_id}:{filename}"))
-                    operations.logs["users"][current_user_id].append({
-                        "executor": current_user_id,
-                        "time": get_current_timestamp(),
-                        "status": LogsStatus.SUCCESS.value,
-                        "command": f"add {filename}",
-                        "file_id": f"{current_user_id}:{filename}"
-                    })
+                    operations.logs.add_user_entry(current_user_id, filename, True,  file_id=file_id)
                 except Exception as e:
                     conn.send(create_error_packet(str(e)))
-                    operations.logs["users"][current_user_id].append({
-                        "executor": current_user_id,
-                        "time": get_current_timestamp(),
-                        "status": LogsStatus.FAILURE.value,
-                        "command": f"add {filename}",
-                        "file_id": f"{current_user_id}:{filename}"
-                    })
+                    operations.logs.add_user_entry(current_user_id, filename, False, file_id=file_id)
 
             case CommandType.LIST_REQUEST.value:
                 try:
-                    if user_id := payload.get("user_id"):  # list -u <user_id>
+                    if user_id := payload.get("user_id"):
+                        command = f"list -u {user_id}"
                         payload = operations.list_user_shared_files(current_user_id, user_id)
-                        operations.logs["users"][current_user_id].append({
-                            "executor": current_user_id,
-                            "time": get_current_timestamp(),
-                            "status": LogsStatus.SUCCESS.value,
-                            "command": f"list -u {user_id}"
-                        })
-                    elif group_id := payload.get("group_id"):  # list -g <group_id>
+                    elif group_id := payload.get("group_id"):
+                        command = f"list -g {group_id}"
                         payload = operations.list_user_group_files(current_user_id, group_id)
-                        operations.logs["users"][current_user_id].append({
-                            "executor": current_user_id,
-                            "time": get_current_timestamp(),
-                            "status": LogsStatus.SUCCESS.value,
-                            "command": f"list -g {group_id}"
-                        })
                     elif not payload:
+                        command = "list"
                         payload = operations.list_user_personal_files(current_user_id)
-                        operations.logs["users"][current_user_id].append({
-                            "executor": current_user_id,
-                            "time": get_current_timestamp(),
-                            "status": LogsStatus.SUCCESS.value,
-                            "command": "list"
-                        })
 
                     conn.send(create_packet(CommandType.LIST_RESPONSE.value, payload))
+                    operations.logs.add_user_entry(current_user_id, command, True)
                 except Exception as e:
-                    if payload.get("user_id"):
-                        operations.logs["users"][current_user_id].append({
-                            "executor": current_user_id,
-                            "time": get_current_timestamp(),
-                            "status": LogsStatus.FAILURE.value,
-                            "command": f"list -u {user_id}"
-                        })
-                    elif payload.get("group_id"):
-                        operations.logs["users"][current_user_id].append({
-                            "executor": current_user_id,
-                            "time": get_current_timestamp(),
-                            "status": LogsStatus.FAILURE.value,
-                            "command": f"list -g {group_id}"
-                        })
-                    elif not payload:
-                        operations.logs["users"][current_user_id].append({
-                            "executor": current_user_id,
-                            "time": get_current_timestamp(),
-                            "status": LogsStatus.FAILURE.value,
-                            "command": "list"
-                        })
                     conn.send(create_error_packet(str(e)))
+                    operations.logs.add_user_entry(current_user_id, command, False)
 
-            case CommandType.SHARE_REQUEST_VALIDATION.value:
+            case CommandType.SHARE_REQUEST_VALIDATION.value:  # TODO name the type as SHARE_REQUEST
                 file_id     = payload.get("file_id")
                 user_id     = payload.get("user_id")
                 permissions = payload.get("permissions")
                 try:
                     public_key, file_key = operations.init_share_user_file(current_user_id, file_id, user_id, permissions)
-
-                    intermediate_packet = create_packet(CommandType.SHARE_RESPONSE_VALIDATION.value,
+                    intermediate_packet = create_packet(CommandType.SHARE_RESPONSE_VALIDATION.value,  # TODO name the type as SHARE_RESPONSE
                                                         {"public_key": base64.b64decode(public_key),
                                                          "file_symmetric_key": base64.b64decode(file_key)})
                     conn.send(intermediate_packet)
@@ -117,62 +70,32 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                     file_key = base64.b64encode(file_key).decode("utf-8")
                     operations.share_user_file(current_user_id, file_id, user_id, permissions, file_key)
 
-                    timestamp = get_current_timestamp()
-                    operations.logs["users"][current_user_id].append({
-                            "executor": current_user_id,
-                            "time": timestamp,
-                            "status": LogsStatus.SUCCESS.value,
-                            "command": f"share {file_id} {user_id} {permissions}",
-                            "file_id": file_id
-                    })
-
-                    operations.logs["users"][user_id].append({
-                            "executor": current_user_id,
-                            "time": timestamp,
-                            "status": LogsStatus.SUCCESS.value,
-                            "command": f"share {file_id} {user_id} {permissions}",
-                            "file_id": file_id
-                    })
-
                     conn.send(create_success_packet(f"Successfully shared file '{file_id}' with user '{user_id}'."))
+                    operations.logs.add_user_entry(current_user_id, f"share {file_id} {user_id} {permissions}", True,
+                                                   file_id=file_id)
+                    operations.logs.add_user_entry(user_id, f"share {file_id} {user_id} {permissions}", True,
+                                                   file_id=file_id, executor_id=current_user_id)
                 except Exception as e:
-                    operations.logs["users"][current_user_id].append({
-                            "executor": current_user_id,
-                            "time": get_current_timestamp(),
-                            "status": LogsStatus.FAILURE.value,
-                            "command": f"share {file_id} {user_id} {permissions}",
-                            "file_id": file_id
-                    })
                     conn.send(create_error_packet(str(e)))
+                    operations.logs.add_user_entry(current_user_id, f"share {file_id} {user_id} {permissions}", False,
+                                                   file_id=file_id)
 
-            case CommandType.DELETE_REQUEST.value:
+            case CommandType.DELETE_REQUEST.value:  # TODO users that had access via share or group don't have the log entry
                 file_id = payload.get("file_id")
                 try:
                     operations.delete_file(current_user_id, file_id)
-
-                    operations.logs["users"][current_user_id].append({
-                            "executor": current_user_id,
-                            "time": get_current_timestamp(),
-                            "status": LogsStatus.SUCCESS.value,
-                            "command": f"delete {file_id}",
-                            "file_id": file_id
-                    })
                     conn.send(create_success_packet(f"Successfully deleted file '{file_id}'."))
+                    operations.logs.add_user_entry(current_user_id, f"delete {file_id}", True, file_id=file_id)
                 except Exception as e:
-                    operations.logs["users"][current_user_id].append({
-                            "executor": current_user_id,
-                            "time": get_current_timestamp(),
-                            "status": LogsStatus.FAILURE.value,
-                            "command": f"delete {file_id}",
-                            "file_id": file_id
-                    })
                     conn.send(create_error_packet(str(e)))
+                    operations.logs.add_user_entry(current_user_id, f"delete {file_id}", False, file_id=file_id)
 
-            case CommandType.REPLACE_REQUEST_VALIDATION.value:
+            # TODO users that have access via share or group don't have the log entry
+            case CommandType.REPLACE_REQUEST_VALIDATION.value:  # TODO name the type as REPLACE_REQUEST
                 file_id = payload.get("file_id")
                 try:
                     file_key = operations.init_replace_file(current_user_id, file_id)
-                    intermediate_packet = create_packet(CommandType.REPLACE_RESPONSE_VALIDATION.value,
+                    intermediate_packet = create_packet(CommandType.REPLACE_RESPONSE_VALIDATION.value,  # TODO name the type as REPLACE_RESPONSE
                                                         {"key": base64.b64decode(file_key)})
                     conn.send(intermediate_packet)
 
@@ -182,81 +105,37 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                     new_content = client_response_packet.get("payload").get("content")
                     new_size = client_response_packet.get("payload").get("size")
                     operations.replace_file(current_user_id, file_id, new_content, new_size)
-
-                    operations.logs["users"][current_user_id].append({
-                            "executor": current_user_id,
-                            "time": get_current_timestamp(),
-                            "status": LogsStatus.SUCCESS.value,
-                            "command": f"replace {file_id}",
-                            "file_id": file_id
-                    })
-
                     conn.send(create_success_packet(f"File '{file_id}' replaced with new content."))
+                    operations.logs.add_user_entry(current_user_id, f"replace {file_id}", True, file_id=file_id)
                 except Exception as e:
-                    operations.logs["users"][current_user_id].append({
-                            "executor": current_user_id,
-                            "time": get_current_timestamp(),
-                            "status": LogsStatus.FAILURE.value,
-                            "command": f"replace {file_id}",
-                            "file_id": file_id
-                    })
                     conn.send(create_error_packet(str(e)))
+                    operations.logs.add_user_entry(current_user_id, f"replace {file_id}", False, file_id=file_id)
 
             case CommandType.DETAILS_REQUEST.value:
                 file_id = payload.get("file_id")
                 try:
                     details = operations.file_details(current_user_id, file_id)
-                    operations.logs["users"][current_user_id].append({
-                            "executor": current_user_id,
-                            "time": get_current_timestamp(),
-                            "status": LogsStatus.SUCCESS.value,
-                            "command": f"details {file_id}",
-                            "file_id": file_id
-                    })
                     conn.send(create_packet(CommandType.DETAILS_RESPONSE.value, details))
+                    operations.logs.add_user_entry(current_user_id, f"details {file_id}", True, file_id=file_id)
                 except Exception as e:
-                    operations.logs["users"][current_user_id].append({
-                            "executor": current_user_id,
-                            "time": get_current_timestamp(),
-                            "status": LogsStatus.FAILURE.value,
-                            "command": f"details {file_id}",
-                            "file_id": file_id
-                    })
                     conn.send(create_error_packet(str(e)))
+                    operations.logs.add_user_entry(current_user_id, f"details {file_id}", False, file_id=file_id)
 
             case CommandType.REVOKE_REQUEST.value:
                 file_id = payload.get("file_id")
                 user_id = payload.get("user_id")
                 try:
                     operations.revoke_user_file_permissions(current_user_id, file_id, user_id)
-
-                    timestamp = get_current_timestamp()
-                    operations.logs["users"][current_user_id].append({
-                            "executor": current_user_id,
-                            "time": timestamp,
-                            "status": LogsStatus.SUCCESS.value,
-                            "command": f"revoke {file_id} {user_id}",
-                            "file_id": file_id
-                    })
-
-                    operations.logs["users"][user_id].append({
-                            "executor": current_user_id,
-                            "time": timestamp,
-                            "status": LogsStatus.SUCCESS.value,
-                            "command": f"revoke {file_id} {user_id}",
-                            "file_id": file_id
-                    })
                     conn.send(create_success_packet(f"Successfully revoked permissions of user "
                                                     f"'{user_id} on file {file_id}'."))
+                    operations.logs.add_user_entry(current_user_id, f"revoke {file_id} {user_id}", True,
+                                                   file_id=file_id)
+                    operations.logs.add_user_entry(user_id, f"revoke {file_id} {user_id}", True,
+                                                   file_id=file_id, executor_id=current_user_id)
                 except Exception as e:
-                    operations.logs["users"][current_user_id].append({
-                            "executor": current_user_id,
-                            "time": get_current_timestamp(),
-                            "status": LogsStatus.FAILURE.value,
-                            "command": f"revoke {file_id} {user_id}",
-                            "file_id": file_id
-                    })
                     conn.send(create_error_packet(str(e)))
+                    operations.logs.add_user_entry(current_user_id, f"revoke {file_id} {user_id}", False,
+                                                   file_id=file_id)
 
             case CommandType.READ_REQUEST.value:
                 try:
@@ -266,28 +145,13 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                     file_content = file.get("file_contents")
                     file_key = base64.b64decode(file.get("key"))
 
-                    response = create_packet(CommandType.READ_RESPONSE.value,
-                                             {"content": file_content,
-                                              "key": file_key})
-
-                    operations.logs["users"][current_user_id].append({
-                            "executor": current_user_id,
-                            "time": get_current_timestamp(),
-                            "status": LogsStatus.SUCCESS.value,
-                            "command": f"read {file_id}",
-                            "file_id": file_id
-                    })
+                    conn.send(create_packet(CommandType.READ_RESPONSE.value,
+                                            {"content": file_content,
+                                             "key": file_key}))
+                    operations.logs.add_user_entry(current_user_id, f"read {file_id}", True, file_id=file_id)
                 except Exception as e:
-                    response = create_error_packet(str(e))
-                    operations.logs["users"][current_user_id].append({
-                            "executor": current_user_id,
-                            "time": get_current_timestamp(),
-                            "status": LogsStatus.FAILURE.value,
-                            "command": f"read {file_id}",
-                            "file_id": file_id
-                    })
-                finally:
-                    conn.send(response)
+                    conn.send(create_error_packet(str(e)))
+                    operations.logs.add_user_entry(current_user_id, f"read {file_id}", False, file_id=file_id)
 
             case CommandType.GROUP_CREATE_REQUEST.value:
                 group_name = payload.get("name")
@@ -295,49 +159,23 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 try:
                     group_key = base64.b64encode(group_key).decode("utf-8")
                     group_id = operations.create_group(current_user_id, group_name, group_key)
-
-                    timestamp = get_current_timestamp()
-                    operations.logs["groups"][group_name] = []
-                    operations.logs["users"][current_user_id].append({
-                        "executor": current_user_id,
-                        "time": timestamp,
-                        "status": LogsStatus.SUCCESS.value,
-                        "command": f"group create {group_id}",
-                        "group_id": group_id
-                    })
-                    operations.logs["groups"][group_name].append({
-                        "executor": current_user_id,
-                        "time": timestamp,
-                        "status": LogsStatus.SUCCESS.value,
-                        "command": f"group create {group_id}"
-                    })
                     conn.send(create_success_packet(message=f"Group ID: {group_id}"))
+                    operations.logs.add_user_entry(current_user_id, f"group create {group_name}", True, group_id=group_name)
+                    operations.logs.add_group_entry(current_user_id, group_name, f"group create {group_name}", True)
                 except Exception as e:
-                    operations.logs["users"][current_user_id].append({
-                        "executor": current_user_id,
-                        "time": get_current_timestamp(),
-                        "status": LogsStatus.FAILURE.value,
-                        "command": f"group create {group_name}",
-                        "group_id": group_name  # TODO the group wasnt created so this camp shoulb be empty or removed
-                    })
                     conn.send(create_error_packet(str(e)))
+                    operations.logs.add_user_entry(current_user_id, f"group create {group_name}", False, group_id=group_name)
 
             case CommandType.GROUP_DELETE_REQUEST.value:
                 group_id = payload.get("id")
                 try:
                     operations.delete_group(current_user_id, group_id)
-
-                    del operations.logs["groups"][group_id]
                     conn.send(create_success_packet())
+                    operations.logs.add_user_entry(current_user_id, f"group delete {group_id}", True, group_id=group_id)
+                    operations.logs.add_group_entry(current_user_id, group_id, f"group delete {group_id}", True)
                 except Exception as e:
-                    operations.logs["users"][current_user_id].append({
-                        "executor": current_user_id,
-                        "time": get_current_timestamp(),
-                        "status": LogsStatus.FAILURE.value,
-                        "command": f"group delete {group_id}",
-                        "group_id": group_id
-                    })
                     conn.send(create_error_packet(str(e)))
+                    operations.logs.add_user_entry(current_user_id, f"group delete {group_id}", False, group_id=group_id)
 
             case CommandType.INIT_GROUP_ADD_USER_REQUEST.value:
                 group_id = payload.get("group_id")
@@ -359,37 +197,21 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 try:
                     group_key = base64.b64encode(group_key).decode("utf-8")
                     message = operations.add_user_to_group(current_user_id, group_id, user_id, permissions, group_key)
-
-                    timestamp = get_current_timestamp()
-                    operations.logs["users"][current_user_id].append({
-                        "executor": current_user_id,
-                        "time": timestamp,
-                        "status": LogsStatus.SUCCESS.value,
-                        "command": f"group add-user {group_id} {user_id} {permissions}",
-                        "group_id": group_id
-                    })
-                    operations.logs["groups"][group_id].append({
-                        "executor": current_user_id,
-                        "time": timestamp,
-                        "status": LogsStatus.SUCCESS.value,
-                        "command": f"group add-user {group_id} {user_id} {permissions}"
-                    })
                     conn.send(create_success_packet(message=message))
+                    operations.logs.add_user_entry(current_user_id, f"group add-user {group_id} {user_id} {permissions}", True,
+                                                   group_id=group_id)
+                    operations.logs.add_group_entry(current_user_id, group_id, f"group add-user {group_id} {user_id} {permissions}", True)
                 except Exception as e:
-                    operations.logs["users"][current_user_id].append({
-                        "executor": current_user_id,
-                        "time": get_current_timestamp(),
-                        "status": LogsStatus.FAILURE.value,
-                        "command": f"group add-user {group_id} {user_id} {permissions}",
-                        "group_id": group_id
-                    })
                     conn.send(create_error_packet(str(e)))
+                    operations.logs.add_user_entry(current_user_id, f"group add-user {group_id} {user_id} {permissions}", False,
+                                                   group_id=group_id)
 
             case CommandType.GROUP_DELETE_USER_REQUEST.value:
                 group_id = payload.get("id")
                 user_id  = payload.get("user_id")
                 confirm  = payload.get("confirm", False)
                 try:
+                    # TODO include files in NeedConfirmation exception message
                     operations.remove_user_from_group(current_user_id, group_id, user_id, confirm)
                     conn.send(create_success_packet())
                 except NeedConfirmation as e:
@@ -399,61 +221,28 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                     if client_response.get("type") == CommandType.CONFIRM.value:
                         try:
                             operations.remove_user_from_group(current_user_id, group_id, user_id, True)
-
-                            timestamp = get_current_timestamp()
-                            operations.logs["users"][current_user_id].append({
-                                "executor": current_user_id,
-                                "time": timestamp,
-                                "status": LogsStatus.SUCCESS.value,
-                                "command": f"group delete-user {group_id} {user_id}",
-                                "group_id": group_id
-                            })
-                            operations.logs["groups"][group_id].append({
-                                "executor": current_user_id,
-                                "time": timestamp,
-                                "status": LogsStatus.SUCCESS.value,
-                                "command": f"group delete-user {group_id} {user_id}"
-                            })
                             conn.send(create_success_packet())
+                            operations.logs.add_user_entry(current_user_id, f"group delete-user {group_id} {user_id}", True,
+                                                           group_id=group_id)
+                            operations.logs.add_group_entry(current_user_id, group_id, f"group delete-user {group_id} {user_id}", True)
                         except Exception as e:
-                            operations.logs["users"][current_user_id].append({
-                                "executor": current_user_id,
-                                "time": get_current_timestamp(),
-                                "status": LogsStatus.FAILURE.value,
-                                "command": f"group delete-user {group_id} {user_id}",
-                                "group_id": group_id
-                            })
                             conn.send(create_error_packet(str(e)))
+                            operations.logs.add_user_entry(current_user_id, f"group delete-user {group_id} {user_id}", False,
+                                                           group_id=group_id)
                 except Exception as e:
-                    operations.logs["users"][current_user_id].append({
-                        "executor": current_user_id,
-                        "time": get_current_timestamp(),
-                        "status": LogsStatus.FAILURE.value,
-                        "command": f"group delete-user {group_id} {user_id}",
-                        "group_id": group_id
-                    })
                     conn.send(create_error_packet(str(e)))
+                    operations.logs.add_user_entry(current_user_id, f"group delete-user {group_id} {user_id}", False,
+                                                   group_id=group_id)
 
             case CommandType.GROUP_LIST_REQUEST.value:
                 try:
                     group_info = operations.list_user_groups(current_user_id)
                     group_info = json.dumps(group_info, indent=2)
-
-                    operations.logs["users"][current_user_id].append({
-                        "executor": current_user_id,
-                        "time": get_current_timestamp(),
-                        "status": LogsStatus.SUCCESS.value,
-                        "command": "group list"
-                    })
                     conn.send(create_success_packet(message=group_info))
+                    operations.logs.add_user_entry(current_user_id, "group list", True)
                 except Exception as e:
-                    operations.logs["users"][current_user_id].append({
-                        "executor": current_user_id,
-                        "time": get_current_timestamp(),
-                        "status": LogsStatus.FAILURE.value,
-                        "command": "group list"
-                    })
                     conn.send(create_error_packet(str(e)))
+                    operations.logs.add_user_entry(current_user_id, "group list", False)
 
             case CommandType.INIT_GROUP_ADD_REQUEST.value:
                 group_id = payload.get("group_id")
@@ -476,61 +265,28 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 try:
                     group_key = base64.b64encode(group_key).decode("utf-8")
                     file_id = operations.add_file_to_group(current_user_id, group_id, filename, content, size, group_key)
-
-                    timestamp = get_current_timestamp()
-                    operations.logs["users"][current_user_id].append({
-                        "executor": current_user_id,
-                        "time": timestamp,
-                        "status": LogsStatus.SUCCESS.value,
-                        "command": f"group add {group_id} {filename}",
-                        "group_id": group_id
-                    })
-                    operations.logs["groups"][group_id].append({
-                        "executor": current_user_id,
-                        "time": timestamp,
-                        "status": LogsStatus.SUCCESS.value,
-                        "command": f"group add {group_id} {filename}"
-                    })
                     conn.send(create_success_packet(f"File ID: {file_id}"))
+                    operations.logs.add_user_entry(current_user_id, f"group add {group_id} {filename}", True,
+                                                   group_id=group_id)
+                    operations.logs.add_group_entry(current_user_id, group_id, f"group add {group_id} {filename}", True)
                 except Exception as e:
-                    operations.logs["groups"][group_id].append({
-                        "executor": current_user_id,
-                        "time": get_current_timestamp(),
-                        "status": LogsStatus.FAILURE.value,
-                        "command": f"group add {group_id} {filename}"
-                    })
                     conn.send(create_error_packet(str(e)))
+                    operations.logs.add_user_entry(current_user_id, f"group add {group_id} {filename}", False,
+                                                   group_id=group_id)
 
             case CommandType.GROUP_DELETE_FILE_REQUEST.value:
                 group_id = payload.get("group_id")
                 file_id  = payload.get("file_id")
                 try:
                     operations.delete_file_from_group(current_user_id, group_id, file_id)
-
-                    timestamp = get_current_timestamp()
-                    operations.logs["users"][current_user_id].append({
-                        "executor": current_user_id,
-                        "time": timestamp,
-                        "status": LogsStatus.SUCCESS.value,
-                        "command": f"group delete-file {group_id} {file_id}",
-                        "group_id": group_id
-                    })
-                    operations.logs["groups"][group_id].append({
-                        "executor": current_user_id,
-                        "time": timestamp,
-                        "status": LogsStatus.SUCCESS.value,
-                        "command": f"group delete-file {group_id} {file_id}"
-                    })
                     conn.send(create_success_packet())
+                    operations.logs.add_user_entry(current_user_id, f"group delete-file {group_id} {file_id}", True,
+                                                   group_id=group_id)
+                    operations.logs.add_group_entry(current_user_id, group_id, f"group delete-file {group_id} {file_id}", True)
                 except Exception as e:
-                    operations.logs["users"][current_user_id].append({
-                        "executor": current_user_id,
-                        "time": get_current_timestamp(),
-                        "status": LogsStatus.FAILURE.value,
-                        "command": f"group delete-file {group_id} {file_id}",
-                        "group_id": group_id
-                    })
                     conn.send(create_error_packet(str(e)))
+                    operations.logs.add_user_entry(current_user_id, f"group delete-file {group_id} {file_id}", False,
+                                                   group_id=group_id)
 
             case CommandType.GROUP_CHANGE_PERMISSIONS_REQUEST.value:
                 group_id    = payload.get("group_id")
@@ -538,31 +294,14 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 permissions = payload.get("permissions")
                 try:
                     operations.change_user_group_permissions(current_user_id, group_id, user_id, permissions)
-
-                    timestamp = get_current_timestamp()
-                    operations.logs["users"][current_user_id].append({
-                        "executor": current_user_id,
-                        "time": timestamp,
-                        "status": LogsStatus.SUCCESS.value,
-                        "command": f"group change-permissions {group_id} {user_id} {permissions}",
-                        "group_id": group_id
-                    })
-                    operations.logs["groups"][group_id].append({
-                        "executor": current_user_id,
-                        "time": timestamp,
-                        "status": LogsStatus.SUCCESS.value,
-                        "command": f"group change-permissions {group_id} {user_id} {permissions}"
-                    })
                     conn.send(create_success_packet())
+                    operations.logs.add_user_entry(current_user_id, f"group change-permissions {group_id} {user_id} {permissions}", True,
+                                                   group_id=group_id)
+                    operations.logs.add_group_entry(current_user_id, group_id, f"group change-permissions {group_id} {user_id} {permissions}", True)
                 except Exception as e:
-                    operations.logs["users"][current_user_id].append({
-                        "executor": current_user_id,
-                        "time": get_current_timestamp(),
-                        "status": LogsStatus.FAILURE.value,
-                        "command": f"group change-permissions {group_id} {user_id} {permissions}",
-                        "group_id": group_id
-                    })
                     conn.send(create_error_packet(str(e)))
+                    operations.logs.add_user_entry(current_user_id, f"group change-permissions {group_id} {user_id} {permissions}", False,
+                                                   group_id=group_id)
 
             case CommandType.GROUP_ADD_MODERATOR_REQUEST.value:
                 user_id = payload.get("user_id")
@@ -570,7 +309,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 try:
                     user_group_key, user_pub_key = operations.init_add_moderator_to_group(current_user_id, group_id, user_id)
                     user_group_key = base64.b64decode(user_group_key)
-                    user_pub_key = base64.b64decode(user_pub_key)
+                    user_pub_key   = base64.b64decode(user_pub_key)
 
                     intermediate_packet = create_packet(CommandType.GROUP_ADD_MODERATOR_RESPONSE_WITH_KEYS.value,
                                                         {"group_key": user_group_key,
@@ -582,64 +321,28 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
 
                     group_key = base64.b64encode(client_response_packet.get("payload").get("key")).decode("utf-8")
                     operations.add_moderator_to_group(current_user_id, group_id, user_id, group_key)
-
-                    timestamp = get_current_timestamp()
-                    operations.logs["users"][current_user_id].append({
-                        "executor": current_user_id,
-                        "time": timestamp,
-                        "status": LogsStatus.SUCCESS.value,
-                        "command": f"group add-moderator {group_id} {user_id}",
-                        "group_id": group_id
-                    })
-                    operations.logs["groups"][group_id].append({
-                        "executor": current_user_id,
-                        "time": timestamp,
-                        "status": LogsStatus.SUCCESS.value,
-                        "command": f"group add-moderator {group_id} {user_id}"
-                    })
-                    response = create_success_packet(f"Successfully added user '{user_id}' as a moderator on group '{group_id}'.")
+                    conn.send(create_success_packet(f"Successfully added user '{user_id}' as a moderator on group '{group_id}'."))
+                    operations.logs.add_user_entry(current_user_id, f"group add-moderator {group_id} {user_id}", True,
+                                                   group_id=group_id)
+                    operations.logs.add_group_entry(current_user_id, group_id, f"group add-moderator {group_id} {user_id}", True)
                 except Exception as e:
-                    operations.logs["users"][current_user_id].append({
-                        "executor": current_user_id,
-                        "time": get_current_timestamp(),
-                        "status": LogsStatus.FAILURE.value,
-                        "command": f"group add-moderator {group_id} {user_id}",
-                        "group_id": group_id
-                    })
-                    response = create_error_packet(str(e))
-                finally:
-                    conn.send(response)
+                    conn.send(create_error_packet(str(e)))
+                    operations.logs.add_user_entry(current_user_id, f"group add-moderator {group_id} {user_id}", False,
+                                                   group_id=group_id)
 
             case CommandType.GROUP_REMOVE_MODERATOR_REQUEST.value:
                 group_id = payload.get("group_id")
                 moderator_id = payload.get("moderator_id")
                 try:
                     operations.remove_moderator_from_group(current_user_id, group_id, moderator_id)
-
-                    timestamp = get_current_timestamp()
-                    operations.logs["users"][current_user_id].append({
-                        "executor": current_user_id,
-                        "time": timestamp,
-                        "status": LogsStatus.SUCCESS.value,
-                        "command": f"group remove-moderator {group_id} {moderator_id}",
-                        "group_id": group_id
-                    })
-                    operations.logs["groups"][group_id].append({
-                        "executor": current_user_id,
-                        "time": timestamp,
-                        "status": LogsStatus.SUCCESS.value,
-                        "command": f"group remove-moderator {group_id} {moderator_id}"
-                    })
                     conn.send(create_success_packet(f"Successfully demoted moderator '{moderator_id}' from group '{group_id}'."))
+                    operations.logs.add_user_entry(current_user_id, f"group remove-moderator {group_id} {moderator_id}", True,
+                                                   group_id=group_id)
+                    operations.logs.add_group_entry(current_user_id, group_id, f"group remove-moderator {group_id} {moderator_id}", True)
                 except Exception as e:
-                    operations.logs["users"][current_user_id].append({
-                        "executor": current_user_id,
-                        "time": get_current_timestamp(),
-                        "status": LogsStatus.FAILURE.value,
-                        "command": f"group remove-moderator {group_id} {moderator_id}",
-                        "group_id": group_id
-                    })
                     conn.send(create_error_packet(str(e)))
+                    operations.logs.add_user_entry(current_user_id, f"group remove-moderator {group_id} {moderator_id}", False,
+                                                   group_id=group_id)
 
             case CommandType.LOGS_GLOBAL_REQUEST.value:
                 try:

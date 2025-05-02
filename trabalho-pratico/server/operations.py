@@ -38,7 +38,6 @@ def get_current_timestamp() -> str:
     return datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")
 
 
-# TODO verify there's no path traversal attack
 def write_file(file_path: str, file_contents: BSON) -> None:
     """
     Atomically write the file contents to the given file path.
@@ -67,10 +66,10 @@ def write_file(file_path: str, file_contents: BSON) -> None:
 ###
 
 class Operations:
-    def __init__(self, config: dict, logs: dict, vault_path: str):
-        self.config = config
-        self.logs = logs
+    def __init__(self, config: dict, logs, vault_path: str) -> None:  # logs: Logs
+        self.config     = config
         self.vault_path = vault_path
+        self.logs       = logs
 
         # Create vault directory if it doesn't exist
         if not os.path.exists(vault_path):
@@ -148,8 +147,7 @@ class Operations:
 
         # Check if the file already exists on user vault
         if file_name in self.config["users"][current_user_id]["files"]:
-            raise FileExistsError(f"File '{file_name}' already exists in "
-                                  f"the user '{current_user_id}' vault.")
+            raise FileExistsError(f"File '{file_name}' already exists in your vault.")
 
         # Write file contents to the vault directory
         file_id = f"{current_user_id}:{file_name}"
@@ -1158,7 +1156,7 @@ class Operations:
         validate_params(user_id=current_user_id)
         self.user_exists(current_user_id)
 
-        return self.logs["users"][current_user_id]
+        return self.logs.logs["users"][current_user_id]
 
     def list_user_file_logs(self,
                             current_user_id: str,
@@ -1171,7 +1169,7 @@ class Operations:
         self.file_exists(file_owner_id, file_name)
 
         logs = []
-        for log in self.logs["users"][current_user_id]:
+        for log in self.logs.logs["users"][current_user_id]:
             if log_file_id := log.get("file_id"):
                 if log_file_id == file_id:
                     logs.append(log)
@@ -1187,7 +1185,7 @@ class Operations:
         self.group_exists(group_id)
 
         logs = []
-        for log in self.logs["users"][current_user_id]:
+        for log in self.logs.logs["users"][current_user_id]:
             if log_group_id := log.get("group_id"):
                 if log_group_id == group_id:
                     logs.append(log)
@@ -1203,6 +1201,6 @@ class Operations:
         self.group_exists(group_id)
 
         if self.config["groups"][group_id]["owner"] == current_user_id:
-            return self.logs["groups"][group_id]
+            return self.logs.logs["groups"][group_id]
         else:
             raise PermissionDenied(f"User '{current_user_id}' isn't the owner of group '{group_id}'.")

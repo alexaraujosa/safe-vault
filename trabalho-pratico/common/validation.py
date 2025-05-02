@@ -1,6 +1,8 @@
 from common.exceptions import InvalidParameter
 import os
 
+# TODO add upper limit to most functions
+
 
 def is_valid_name(name: str) -> bool:
     "Check if the given name is valid, i.e., not empty and alphanumeric."

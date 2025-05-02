@@ -7,9 +7,6 @@ from common.debug import G_DEBUG_PACKET_READ_FULLY
 
 PACKET_VERSION = 1
 
-class LogsStatus(Enum):
-    SUCCESS = auto()
-    FAILURE = auto()
 
 class CommandType(Enum):
     SUCCESS                                = auto()

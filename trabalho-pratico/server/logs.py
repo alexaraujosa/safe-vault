@@ -1,5 +1,12 @@
 import json
 from enum import Enum, auto
+from server.operations import get_current_timestamp
+
+
+class Status(Enum):
+    SUCCESS = auto()
+    FAILURE = auto()
+
 
 class Logs:
     def __init__(self, logs_path):
@@ -42,3 +49,44 @@ class Logs:
 
     def __str__(self):
         return json.dumps(self.logs, ensure_ascii=False, indent=4)
+
+    # User logs
+    def add_user_entry(self,
+                       user_id: str,
+                       command: str,
+                       success: bool,
+                       file_id: str = None,
+                       group_id: str = None,
+                       executor_id: str = None) -> None:
+        log_entry = {
+            "executor": executor_id if executor_id else user_id,
+            "time": get_current_timestamp(),
+            "success": success,
+            "command": command
+        }
+
+        if file_id is not None:
+            log_entry["file_id"] = file_id
+
+        if group_id is not None:
+            log_entry["group_id"] = group_id
+
+        if user_id not in self.logs["users"]:
+            self.logs["users"][user_id] = []
+        self.logs["users"][user_id].append(log_entry)
+
+    def add_group_entry(self,
+                        executor_id: str,
+                        group_id: str,
+                        command: str,
+                        success: bool) -> None:
+        log_entry = {
+            "executor": executor_id,
+            "time": get_current_timestamp(),
+            "success": success,
+            "command": command
+        }
+
+        if group_id not in self.logs["groups"]:
+            self.logs["groups"][group_id] = []
+        self.logs["groups"][group_id].append(log_entry)

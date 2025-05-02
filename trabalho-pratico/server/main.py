@@ -13,9 +13,9 @@ from cryptography.hazmat.primitives import serialization
 from common.exceptions import UserExists
 from common.keystore   import Keystore
 from common.validation import is_valid_file
-from common.packet     import read_fully, create_packet, CommandType, LogsStatus
+from common.packet     import read_fully, create_packet, CommandType
 from server.config     import Config
-from server.operations import Operations, get_current_timestamp
+from server.operations import Operations
 from server.handler    import process_request
 from server.logs       import Logs
 
@@ -70,13 +70,7 @@ def handleClient(operations, conn: ssl.SSLSocket, addr, config, process_lock):
             )
             with process_lock:
                 operations.create_user(user_id, base64.b64encode(public_key).decode("utf-8"))
-                operations.logs["users"][user_id] = []
-                operations.logs["users"][user_id].append({
-                    "executor": "system",
-                    "time": get_current_timestamp(),
-                    "status": LogsStatus.SUCCESS.value,
-                    "command": "create user"
-                })
+                operations.logs.add_user_entry(user_id, "create user", True, executor_id="system")
             print(f"✅ User {user_id} account created.")
 
             # Send welcome packet
@@ -86,23 +80,13 @@ def handleClient(operations, conn: ssl.SSLSocket, addr, config, process_lock):
                 config_client_public_key = base64.b64decode(config.config["users"][user_id]["public_key"])
             if config_client_public_key == public_key:
                 # Send welcome back packet
-                operations.logs["users"][user_id].append({
-                    "executor": "system",
-                    "time": get_current_timestamp(),
-                    "status": LogsStatus.SUCCESS.value,
-                    "command": "authenticate user"
-                })
                 conn.send(create_packet(CommandType.AUTH_WELCOME_BACK.value))
+                operations.logs.add_user_entry(user_id, "authenticate user", True, executor_id="system")
                 print(f"✅ User {user_id} authenticated.")
             else:
                 # Send user id already took packet
-                operations.logs["users"][user_id].append({
-                    "executor": "system",
-                    "time": get_current_timestamp(),
-                    "status": LogsStatus.FAILURE.value,
-                    "command": "authenticate user"
-                })
                 conn.send(create_packet(CommandType.AUTH_USER_ALREADY_TOOK.value))
+                operations.logs.add_user_entry(user_id, "authenticate user", False, executor_id="system")
                 print(f"❌ Attempt to authenticate as {user_id}, but detected different public key!")
 
         except ValueError:
@@ -205,7 +189,7 @@ def main():
         logs = Logs(args.logs)
 
         # Initialize server operations class
-        operations = Operations(config.config, logs.logs, args.vault)
+        operations = Operations(config.config, logs, args.vault)
 
         # Create process lock
         process_lock = threading.Lock()
@@ -257,7 +241,7 @@ def main():
 
     # Save log file
     try:
-        logs.save(logs=operations.logs)
+        logs.save(logs=operations.logs.logs)
     except Exception as e:
         print(f"Failed to save log file: {e}")
         sys.exit(1)
