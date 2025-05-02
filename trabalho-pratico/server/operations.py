@@ -779,6 +779,9 @@ class Operations:
         if not self.config["groups"][group_id]["files"][user_id]:
             del self.config["groups"][group_id]["files"][user_id]
 
+        # Delete group from file acl groups metadata list
+        self.config["users"][user_id]["files"][file_name]["acl"]["groups"].remove(group_id)
+
     ###
     # Group Moderator Operations
     ###
