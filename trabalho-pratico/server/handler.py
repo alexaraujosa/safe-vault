@@ -317,8 +317,8 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                         "executor": current_user_id,
                         "time": get_current_timestamp(),
                         "status": LogsStatus.FAILURE.value,
-                        "command": f"group create {group_id}",
-                        "group_id": group_id
+                        "command": f"group create {group_name}",
+                        "group_id": group_name
                     })
                     conn.send(create_error_packet(str(e)))
 
