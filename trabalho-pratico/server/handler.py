@@ -368,7 +368,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                         "command": f"group add-user {group_id} {user_id} {permissions}",
                         "group_id": group_id
                     })
-                    operations.logs["groups"][group_name].append({
+                    operations.logs["groups"][group_id].append({
                         "executor": current_user_id,
                         "time": timestamp,
                         "status": LogsStatus.SUCCESS.value,
