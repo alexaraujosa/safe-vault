@@ -229,10 +229,10 @@ class Operations:
         return files
 
     def init_share_user_file(self,
-                                 current_user_id: str,
-                                 file_id: str,
-                                 user_id_to_share: str,
-                                 permissions: str) -> tuple[str, str]:
+                             current_user_id: str,
+                             file_id: str,
+                             user_id_to_share: str,
+                             permissions: str) -> tuple[str, str]:
         validate_params(user_ids=[current_user_id, user_id_to_share],
                         file_id=file_id,
                         permissions=permissions)
@@ -313,7 +313,7 @@ class Operations:
         # Check if the current user is the owner of the file
         if current_user_id != file_owner_id:
             raise PermissionDenied(f"User {current_user_id} is not the owner of file {file_id}.")
-        
+
         self.file_exists(current_user_id, file_name)
 
         # Check if the user being revoked is not a shared user
@@ -783,9 +783,9 @@ class Operations:
     ###
 
     def init_add_moderator_to_group(self,
-                                        current_user_id: str,
-                                        group_id: str,
-                                        user_id: str) -> tuple[str, str]:
+                                    current_user_id: str,
+                                    group_id: str,
+                                    user_id: str) -> tuple[str, str]:
 
         validate_params(user_ids=[current_user_id, user_id],
                         group_id=group_id)
@@ -901,8 +901,8 @@ class Operations:
                     break
 
             if not (is_owner or is_shared_user or is_group_member):
-                raise PermissionDenied("Invalid permissions to read the file or "
-                             f"the file '{file_id}' does not exists on user '{file_owner_id}' vault.")
+                raise PermissionDenied("Invalid permissions to read the file or the file "
+                                       f"'{file_id}' does not exists on user '{file_owner_id}' vault.")
         else:
             raise ValueError("Invalid permissions to read the file or "
                              f"the file '{file_id}' does not exists on user '{file_owner_id}' vault.")
@@ -941,8 +941,8 @@ class Operations:
         }
 
     def init_replace_file(self,
-                              current_user_id: str,
-                              file_id: str) -> None:
+                          current_user_id: str,
+                          file_id: str) -> None:
         validate_params(user_id=current_user_id,
                         file_id=file_id)
         self.user_exists(current_user_id)
@@ -1134,7 +1134,7 @@ class Operations:
                 self.config["groups"][group_id]["files"][file_owner_id].remove(file_name)
                 if len(self.config["groups"][group_id]["files"][file_owner_id]) == 0:
                     del self.config["groups"][group_id]["files"][file_owner_id]
-                
+
                 # Delete the group entry on file acl
                 self.config["users"][file_owner_id]["files"][file_name]["acl"]["groups"].remove(group_id)
 
@@ -1148,7 +1148,7 @@ class Operations:
         self.user_exists(current_user_id)
 
         return self.logs["users"][current_user_id]
-    
+
     def list_user_file_logs(self,
                             current_user_id: str,
                             file_id: str) -> list:
@@ -1164,9 +1164,9 @@ class Operations:
             if log_file_id := log.get("file_id"):
                 if log_file_id == file_id:
                     logs.append(log)
-        
+
         return logs
-    
+
     def list_user_group_logs(self,
                              current_user_id: str,
                              group_id: str) -> list:
@@ -1182,7 +1182,7 @@ class Operations:
                     logs.append(log)
 
         return logs
-    
+
     def list_group_logs(self,
                         current_user_id: str,
                         group_id: str) -> list:
