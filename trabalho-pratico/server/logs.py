@@ -37,8 +37,8 @@ class Logs:
 
         n_users  = len(self.logs.get('users', []))
         n_groups = len(self.logs.get('groups', []))
-        print(f"Loaded {n_users} user{'s' if n_users > 1 else ''} logs and "
-              f"{n_groups} group{'s' if n_groups > 1 else ''} logs from {self.logs_path}")
+        print(f"Loaded {n_users} user{'s' if n_users != 1 else ''} and "
+              f"{n_groups} group{'s' if n_groups != 1 else ''} logs entries from {self.logs_path}")
 
     def __str__(self):
         return json.dumps(self.logs, ensure_ascii=False, indent=4)

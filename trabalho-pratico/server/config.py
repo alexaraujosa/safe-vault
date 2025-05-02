@@ -37,8 +37,8 @@ class Config:
 
         n_users  = len(self.config.get('users', []))
         n_groups = len(self.config.get('groups', []))
-        print(f"Loaded {n_users} user{'s' if n_users > 1 else ''} and "
-              f"{n_groups} group{'s' if n_groups > 1 else ''} from {self.config_path}")
+        print(f"Loaded {n_users} user{'s' if n_users != 1 else ''} and "
+              f"{n_groups} group{'s' if n_groups != 1 else ''} from {self.config_path}")
 
     def __str__(self):
         return json.dumps(self.config, ensure_ascii=False, indent=4)
