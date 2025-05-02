@@ -305,7 +305,6 @@ class Operations:
 
         file_owner_id, _, file_name = file_id.partition(":")
         self.user_exists(file_owner_id)
-        self.file_exists(current_user_id, file_name)
 
         # Check if the user being revoked is not the owner
         if user_id_to_revoke == file_owner_id:
@@ -314,6 +313,8 @@ class Operations:
         # Check if the current user is the owner of the file
         if current_user_id != file_owner_id:
             raise PermissionDenied(f"User {current_user_id} is not the owner of file {file_id}.")
+        
+        self.file_exists(current_user_id, file_name)
 
         # Check if the user being revoked is not a shared user
         file_acl = self.config["users"][current_user_id]["files"][file_name]["acl"]
