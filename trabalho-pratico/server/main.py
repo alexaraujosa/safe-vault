@@ -13,7 +13,7 @@ from cryptography.hazmat.primitives import serialization
 from common.exceptions import UserExists
 from common.keystore   import Keystore
 from common.validation import is_valid_file
-from common.packet     import read_fully, create_packet, CommandType
+from common.packet     import read_fully, create_packet, decode_packet, CommandType
 from server.config     import Config
 from server.operations import Operations
 from server.handler    import process_request
@@ -111,8 +111,17 @@ def handleClient(operations, conn: ssl.SSLSocket, addr, config, process_lock):
                 trace("PACKET LEN:", len(packet_data), g_debug=G_DEBUG)
                 trace(packet_data, g_debug=G_DEBUG)
 
+                # Decode the packet
+                try:
+                    packet = decode_packet(packet_data)
+                except ValueError as e:
+                    print(f"❌ Malformed packet detected from {addr}: {e}")
+                    conn.send(create_packet(CommandType.ERROR.value, {"message": str(e)}))
+                    continue
+
+                # Process the request
                 with process_lock:
-                    process_request(operations, user_id, conn, packet_data)
+                    process_request(operations, user_id, conn, packet)
 
                     # DEBUG update the config file on every operation
                     if G_CONFIG_DEBUG:
