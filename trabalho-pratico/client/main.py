@@ -17,6 +17,7 @@ from client.handler    import process_command
 from common.packet     import read_fully, CommandType
 
 SERVER_ID = "VAULT_SERVER"
+DEFAULT_CA = "assets/certs/VAULT_CA.crt"  # Default path for server CA certificate
 HISTORY_SIZE = 100
 
 
@@ -38,28 +39,25 @@ def setup_readline():
 
 def main():
     parser = argparse.ArgumentParser("client")
-    parser.add_argument("--cert",     type=str, required=True,                help="Path to the server's CA certificate")
-    parser.add_argument("--keystore", type=str, required=True,                help="Path to the client's keystore file")
-    parser.add_argument("--port",     type=int, required=False, default=8443, help="The port for the client to connect to")
+    parser.add_argument("--keystore", type=str, required=True,                       help="Client's keystore file")
+    parser.add_argument("--cert",     type=str, required=False, default=DEFAULT_CA,  help="Server's CA certificate file")
+    parser.add_argument("--host",     type=str, required=False, default="127.0.0.1", help="Server hostname or IP address")
+    parser.add_argument("--port",     type=int, required=False, default=8443,        help="Server port number")
     args = parser.parse_args()
 
-    # Extract and validate arguments
-    ca_cert_file = args.cert
-    p12_file = args.keystore
-    port = args.port
-
-    if not (1 <= port <= 65535):
+    # Validate command line arguments
+    if not (1 <= args.port <= 65535):
         print("❌ Invalid port number. Must be between 1 and 65535.")
         sys.exit(1)
 
-    for file in [ca_cert_file, p12_file]:
+    for file in [args.cert, args.keystore]:
         if not is_valid_file(file):
             print(f"❌ Invalid file: {file}.")
             sys.exit(1)
 
     # Extract public key and private key from PKCS#12 file
     try:
-        client_private_key, client_public_key, client_cert = RSA.load_keys_from_p12(p12_file)
+        client_private_key, client_public_key, client_cert = RSA.load_keys_from_p12(args.keystore)
     except Exception as e:
         print(f"❌ Failed to load PKCS#12 file: {e}")
         sys.exit(1)
@@ -68,11 +66,11 @@ def main():
     try:
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         # Load .p12 file
-        cks = Keystore.load(p12_file)
+        cks = Keystore.load(args.keystore)
         # Load client certificate and private key
         context.load_cert_chain(certfile=cks.getCertFile(), keyfile=cks.getKeyFile())
         # Load trustable CA
-        context.load_verify_locations(cafile=ca_cert_file)
+        context.load_verify_locations(cafile=args.cert)
         # Verify if the server certificate is signed by a trusted CA
         context.verify_mode = ssl.CERT_REQUIRED
 
@@ -93,10 +91,10 @@ def main():
 
     # Connection
     try:
-        with socket.create_connection(("127.0.0.1", port)) as sock:
+        with socket.create_connection((args.host, args.port)) as sock:
             with context.wrap_socket(sock, server_hostname="SSI Vault Server") as ssock:
-                print(f"✅ Connected securely to 127.0.0.1:{port}")
-                print(f"Socket Version: {ssock.version()}")
+                print(f"✅ Connected securely to {args.host}:{args.port}")
+                # print(f"Socket Version: {ssock.version()}")
 
                 peerCert = ssock.getpeercert(binary_form=True)
                 if not peerCert:
@@ -109,25 +107,26 @@ def main():
                     print("❌ Invalid Server ID.")
                     exit(1)
 
-                print(f"✅ Authenticated Server: {serverId}")
+                print(f"✅ Server authenticated: {serverId}")
 
                 auth_packet = BSON.decode(read_fully(ssock))
                 user_id = extractSubjectId(client_cert)
                 if user_id:
                     match auth_packet.get("type"):
                         case CommandType.AUTH_WELCOME.value:
-                            print(f"Welcome, {user_id}.")
+                            print(f"Welcome {user_id}")
                         case CommandType.AUTH_WELCOME_BACK.value:
-                            print(f"Welcome back, {user_id}.")
+                            print(f"Welcome back {user_id}")
                         case CommandType.AUTH_USER_ALREADY_TOOK.value:
-                            print(f"Authentication failed!")
-                            print(f"The user id '{user_id}' already exists.")
+                            print("Authentication failed!")
+                            print(f"The user id '{user_id}' already exists.\n"
+                                  "Regenerate the certificate with a different user id.")
                             sys.exit(1)
                         case CommandType.AUTH_FAIL.value:
                             print(f"Invalid user id '{user_id}'.")
                             sys.exit(1)
                 else:
-                    print(f"Error on authentication, due to empty user id on the provided certificate.")
+                    print("Error on authentication, due to empty user id on the provided certificate.")
                     sys.exit(1)
 
                 setup_readline()
@@ -173,7 +172,7 @@ def main():
     except ssl.SSLCertVerificationError:
         print("❌ Peer is not a valid server.")
     except ConnectionRefusedError:
-        print(f"❌ Connection refused. Is the server running on port {port}?")
+        print(f"❌ Connection refused. Is the server running on port {args.port}?")
         sys.exit(1)
     except PermissionError:
         print("❌ Permission denied.")
