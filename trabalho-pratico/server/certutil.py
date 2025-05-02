@@ -46,6 +46,7 @@ def generatePrivateKey():
     #     ec.SECP256R1(),
     #     backend=default_backend()
     # )
+
     # Using RSA (same as client.encryption module)
     return rsa.generate_private_key(
         public_exponent=65537,
@@ -64,9 +65,9 @@ def generateCACert(key, subjectInfo, nValidBefore=None, nValidAfter=None):
     subject = generateX509Name(subjectInfo)
 
     if (nValidBefore is None):
-        nValidBefore = datetime.datetime.utcnow()
+        nValidBefore = datetime.datetime.now(datetime.UTC)
     if (nValidAfter is None):
-        nValidAfter = datetime.datetime.utcnow() + datetime.timedelta(days=365)
+        nValidAfter = datetime.datetime.now(datetime.UTC) + datetime.timedelta(days=365)
 
     cert = (
         x509.CertificateBuilder()
@@ -89,9 +90,9 @@ def generateSubjectCert(caCert, caKey, key, commonName, subjectId, nValidBefore=
     subjectInfo["PSEUDONYM"] = subjectId
 
     if (nValidBefore is None):
-        nValidBefore = datetime.datetime.utcnow()
+        nValidBefore = datetime.datetime.now(datetime.UTC)
     if (nValidAfter is None):
-        nValidAfter = datetime.datetime.utcnow() + datetime.timedelta(days=365)
+        nValidAfter = datetime.datetime.now(datetime.UTC) + datetime.timedelta(days=365)
 
     subject = generateX509Name(subjectInfo)
     cert = (
@@ -168,14 +169,15 @@ if __name__ == "__main__":
 
     # CA generation
     genCACommand = subparsers.add_parser("genca", help="Generate a new CA certificate and private key.")
-    genCACommand.add_argument("--out-dir", required=True, type=str)
+    genCACommand.add_argument("--out-dir", required=True,  type=str)
+    genCACommand.add_argument("--id",      required=False, type=str, default="VAULT_CA")
 
     # Cert generation
     genCertCommand = subparsers.add_parser("genstore", help="Generate signed cert and PKCS12")
     genCertCommand.add_argument("--out-dir",          required=True,  type=str)
     genCertCommand.add_argument("--ca-key",           required=True,  type=str)
     genCertCommand.add_argument("--ca-cert",          required=True,  type=str)
-    genCertCommand.add_argument("--name",             required=True,  type=str)
+    genCertCommand.add_argument("--common-name",      required=True,  type=str)
     genCertCommand.add_argument("--id",               required=True,  type=str)
     genCertCommand.add_argument("--not-valid-before", required=False, type=str)
     genCertCommand.add_argument("--not-valid-after",  required=False, type=str)
@@ -189,26 +191,24 @@ if __name__ == "__main__":
             caKey = generatePrivateKey()
             caCert = generateCACert(caKey, CA_SUBJECT)
 
-            writePEM(os.path.join(args.out_dir, "VAULT_CA.pem"), caKey, "key")
-            writePEM(os.path.join(args.out_dir, "VAULT_CA.crt"), caCert, "cert")
-            print("✅ CA certificate and key saved.")
+            writePEM(os.path.join(args.out_dir, f"{args.id}.pem"), caKey, "key")
+            writePEM(os.path.join(args.out_dir, f"{args.id}.crt"), caCert, "cert")
+            print(f"✅ CA certificate and key for '{args.id}' saved.")
         case "genstore":
             caKey = readPEM(args.ca_key, "key")
             caCert = readPEM(args.ca_cert, "cert")
 
             nValidBefore = datetime.datetime.strptime(args.not_valid_before, "%d/%m/%Y") \
-                if (args.not_valid_before is not None) \
-                else None
+                if (args.not_valid_before is not None) else None
             nValidAfter = datetime.datetime.strptime(args.not_valid_after, "%d/%m/%Y") \
-                if (args.not_valid_after is not None) \
-                else None
+                if (args.not_valid_after is not None) else None
 
             key = generatePrivateKey()
             cert = generateSubjectCert(
                 caCert,
                 caKey,
                 key,
-                args.name,
+                args.common_name,
                 args.id,
                 nValidBefore,
                 nValidAfter
