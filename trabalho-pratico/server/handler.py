@@ -318,7 +318,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                         "time": get_current_timestamp(),
                         "status": LogsStatus.FAILURE.value,
                         "command": f"group create {group_name}",
-                        "group_id": group_name
+                        "group_id": group_name  # TODO the group wasnt created so this camp shoulb be empty or removed
                     })
                     conn.send(create_error_packet(str(e)))
 
@@ -408,7 +408,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                                 "command": f"group delete-user {group_id} {user_id}",
                                 "group_id": group_id
                             })
-                            operations.logs["groups"][group_name].append({
+                            operations.logs["groups"][group_id].append({
                                 "executor": current_user_id,
                                 "time": timestamp,
                                 "status": LogsStatus.SUCCESS.value,
@@ -485,7 +485,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                         "command": f"group add {group_id} {filename}",
                         "group_id": group_id
                     })
-                    operations.logs["groups"][group_name].append({
+                    operations.logs["groups"][group_id].append({
                         "executor": current_user_id,
                         "time": timestamp,
                         "status": LogsStatus.SUCCESS.value,
@@ -493,7 +493,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                     })
                     conn.send(create_success_packet(f"File ID: {file_id}"))
                 except Exception as e:
-                    operations.logs["groups"][group_name].append({
+                    operations.logs["groups"][group_id].append({
                         "executor": current_user_id,
                         "time": get_current_timestamp(),
                         "status": LogsStatus.FAILURE.value,
@@ -515,7 +515,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                         "command": f"group delete-file {group_id} {file_id}",
                         "group_id": group_id
                     })
-                    operations.logs["groups"][group_name].append({
+                    operations.logs["groups"][group_id].append({
                         "executor": current_user_id,
                         "time": timestamp,
                         "status": LogsStatus.SUCCESS.value,
