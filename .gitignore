@@ -4,6 +4,9 @@ trabalho-pratico/.*_history
 # Ignore json files in trabalho-pratico/server/ directory
 trabalho-pratico/server/*.json
 
+# Ignore default vault directory
+trabalho-pratico/server/vault/
+
 # Created by https://www.toptal.com/developers/gitignore/api/python,visualstudiocode,macos
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,visualstudiocode,macos
 
