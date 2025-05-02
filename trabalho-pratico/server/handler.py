@@ -16,7 +16,7 @@ from common.packet import (
 def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLSocket, packet: dict):
     payload = packet.get("payload")
     match packet.get("type"):
-        case CommandType.ADD_REQUEST.value:
+        case CommandType.ADD.value:
             content  = payload.get("content")
             file_key = payload.get("key")
             size     = payload.get("size")
@@ -25,13 +25,13 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
             try:
                 file_key = base64.b64encode(file_key).decode("utf-8")
                 operations.add_file_to_user(current_user_id, filename, content, file_key, size)
-                conn.send(create_success_packet(f"File ID: {current_user_id}:{filename}"))
+                conn.send(create_success_packet(message=f"File ID: {current_user_id}:{filename}"))
                 operations.logs.add_user_entry(current_user_id, filename, True,  file_id=file_id)
             except Exception as e:
                 conn.send(create_error_packet(str(e)))
                 operations.logs.add_user_entry(current_user_id, filename, False, file_id=file_id)
 
-        case CommandType.LIST_REQUEST.value:
+        case CommandType.LIST.value:
             try:
                 if user_id := payload.get("user_id"):
                     command = f"list -u {user_id}"
@@ -43,23 +43,29 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                     command = "list"
                     payload = operations.list_user_personal_files(current_user_id)
 
-                conn.send(create_packet(CommandType.LIST_RESPONSE.value, payload))
+                conn.send(create_packet(CommandType.LIST.value, payload))
                 operations.logs.add_user_entry(current_user_id, command, True)
             except Exception as e:
                 conn.send(create_error_packet(str(e)))
                 operations.logs.add_user_entry(current_user_id, command, False)
 
-        case CommandType.SHARE_REQUEST_VALIDATION.value:  # TODO name the type as SHARE_REQUEST
+        case CommandType.SHARE.value:
             file_id     = payload.get("file_id")
             user_id     = payload.get("user_id")
             permissions = payload.get("permissions")
             try:
                 public_key, file_key = operations.init_share_user_file(current_user_id, file_id, user_id, permissions)
-                intermediate_packet = create_packet(CommandType.SHARE_RESPONSE_VALIDATION.value,  # TODO name the type as SHARE_RESPONSE
+                intermediate_packet = create_packet(CommandType.SHARE.value,
                                                     {"public_key": base64.b64decode(public_key),
                                                      "file_symmetric_key": base64.b64decode(file_key)})
                 conn.send(intermediate_packet)
+            except Exception as e:
+                conn.send(create_error_packet(str(e)))
+                operations.logs.add_user_entry(current_user_id, f"share {file_id} {user_id} {permissions}", False,
+                                               file_id=file_id)
+                return
 
+            try:
                 # Await client response with encrypted file key
                 client_response_packet = receive_packet(conn)
 
@@ -67,7 +73,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 file_key = base64.b64encode(file_key).decode("utf-8")
                 operations.share_user_file(current_user_id, file_id, user_id, permissions, file_key)
 
-                conn.send(create_success_packet(f"Successfully shared file '{file_id}' with user '{user_id}'."))
+                conn.send(create_success_packet())
                 operations.logs.add_user_entry(current_user_id, f"share {file_id} {user_id} {permissions}", True,
                                                file_id=file_id)
                 operations.logs.add_user_entry(user_id, f"share {file_id} {user_id} {permissions}", True,
@@ -77,54 +83,60 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 operations.logs.add_user_entry(current_user_id, f"share {file_id} {user_id} {permissions}", False,
                                                file_id=file_id)
 
-        case CommandType.DELETE_REQUEST.value:  # TODO users that had access via share or group don't have the log entry
+        # TODO users that had access via share or group don't have the log entry
+        case CommandType.DELETE.value:
             file_id = payload.get("file_id")
             try:
                 operations.delete_file(current_user_id, file_id)
-                conn.send(create_success_packet(f"Successfully deleted file '{file_id}'."))
+                conn.send(create_success_packet())
                 operations.logs.add_user_entry(current_user_id, f"delete {file_id}", True, file_id=file_id)
             except Exception as e:
                 conn.send(create_error_packet(str(e)))
                 operations.logs.add_user_entry(current_user_id, f"delete {file_id}", False, file_id=file_id)
 
         # TODO users that have access via share or group don't have the log entry
-        case CommandType.REPLACE_REQUEST_VALIDATION.value:  # TODO name the type as REPLACE_REQUEST
+        case CommandType.REPLACE.value:
             file_id = payload.get("file_id")
             try:
                 file_key = operations.init_replace_file(current_user_id, file_id)
-                intermediate_packet = create_packet(CommandType.REPLACE_RESPONSE_VALIDATION.value,  # TODO name the type as REPLACE_RESPONSE
+                intermediate_packet = create_packet(CommandType.REPLACE.value,
                                                     {"key": base64.b64decode(file_key)})
                 conn.send(intermediate_packet)
+            except Exception as e:
+                conn.send(create_error_packet(str(e)))
+                operations.logs.add_user_entry(current_user_id, f"replace {file_id}", False, file_id=file_id)
+                return
 
+            try:
                 # Await client response with encrypted new file content
                 client_response_packet = receive_packet(conn)
 
                 new_content = client_response_packet.get("payload").get("content")
                 new_size = client_response_packet.get("payload").get("size")
+
                 operations.replace_file(current_user_id, file_id, new_content, new_size)
-                conn.send(create_success_packet(f"File '{file_id}' replaced with new content."))
+                conn.send(create_success_packet())
                 operations.logs.add_user_entry(current_user_id, f"replace {file_id}", True, file_id=file_id)
             except Exception as e:
                 conn.send(create_error_packet(str(e)))
                 operations.logs.add_user_entry(current_user_id, f"replace {file_id}", False, file_id=file_id)
 
-        case CommandType.DETAILS_REQUEST.value:
+        case CommandType.DETAILS.value:
             file_id = payload.get("file_id")
             try:
                 details = operations.file_details(current_user_id, file_id)
-                conn.send(create_packet(CommandType.DETAILS_RESPONSE.value, details))
+                conn.send(create_packet(CommandType.DETAILS.value, details))
                 operations.logs.add_user_entry(current_user_id, f"details {file_id}", True, file_id=file_id)
             except Exception as e:
                 conn.send(create_error_packet(str(e)))
                 operations.logs.add_user_entry(current_user_id, f"details {file_id}", False, file_id=file_id)
 
-        case CommandType.REVOKE_REQUEST.value:
+        case CommandType.REVOKE.value:
             file_id = payload.get("file_id")
             user_id = payload.get("user_id")
             try:
                 operations.revoke_user_file_permissions(current_user_id, file_id, user_id)
-                conn.send(create_success_packet(f"Successfully revoked permissions of user "
-                                                f"'{user_id} on file {file_id}'."))
+                conn.send(create_success_packet())
                 operations.logs.add_user_entry(current_user_id, f"revoke {file_id} {user_id}", True,
                                                file_id=file_id)
                 operations.logs.add_user_entry(user_id, f"revoke {file_id} {user_id}", True,
@@ -134,7 +146,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 operations.logs.add_user_entry(current_user_id, f"revoke {file_id} {user_id}", False,
                                                file_id=file_id)
 
-        case CommandType.READ_REQUEST.value:
+        case CommandType.READ.value:
             try:
                 file_id = payload.get("file_id")
                 file = operations.read_file(current_user_id, file_id)
@@ -142,7 +154,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 file_content = file.get("file_contents")
                 file_key = base64.b64decode(file.get("key"))
 
-                conn.send(create_packet(CommandType.READ_RESPONSE.value,
+                conn.send(create_packet(CommandType.READ.value,
                                         {"content": file_content,
                                          "key": file_key}))
                 operations.logs.add_user_entry(current_user_id, f"read {file_id}", True, file_id=file_id)
@@ -150,7 +162,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 conn.send(create_error_packet(str(e)))
                 operations.logs.add_user_entry(current_user_id, f"read {file_id}", False, file_id=file_id)
 
-        case CommandType.GROUP_CREATE_REQUEST.value:
+        case CommandType.GROUP_CREATE.value:
             group_name = payload.get("name")
             group_key  = payload.get("key")
             try:
@@ -163,7 +175,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 conn.send(create_error_packet(str(e)))
                 operations.logs.add_user_entry(current_user_id, f"group create {group_name}", False, group_id=group_name)
 
-        case CommandType.GROUP_DELETE_REQUEST.value:
+        case CommandType.GROUP_DELETE.value:
             group_id = payload.get("id")
             try:
                 operations.delete_group(current_user_id, group_id)
@@ -174,19 +186,19 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 conn.send(create_error_packet(str(e)))
                 operations.logs.add_user_entry(current_user_id, f"group delete {group_id}", False, group_id=group_id)
 
-        case CommandType.INIT_GROUP_ADD_USER_REQUEST.value:
+        case CommandType.GROUP_ADD_USER_INIT.value:
             group_id = payload.get("group_id")
             user_id  = payload.get("user_id")
             try:
                 group_key, user_public_key = operations.init_add_user_to_group(current_user_id, group_id, user_id)
-                server_response = create_packet(CommandType.INIT_GROUP_ADD_USER_RESPONSE.value,
+                server_response = create_packet(CommandType.GROUP_ADD_USER_INIT.value,
                                                 {"group_key": base64.b64decode(group_key),
                                                  "public_key": base64.b64decode(user_public_key)})
                 conn.send(server_response)
             except Exception as e:
                 conn.send(create_error_packet(str(e)))
 
-        case CommandType.GROUP_ADD_USER_REQUEST.value:
+        case CommandType.GROUP_ADD_USER.value:
             group_id    = payload.get("group_id")
             user_id     = payload.get("user_id")
             permissions = payload.get("permissions")
@@ -203,7 +215,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 operations.logs.add_user_entry(current_user_id, f"group add-user {group_id} {user_id} {permissions}", False,
                                                group_id=group_id)
 
-        case CommandType.GROUP_DELETE_USER_REQUEST.value:
+        case CommandType.GROUP_DELETE_USER.value:
             group_id = payload.get("id")
             user_id  = payload.get("user_id")
             confirm  = payload.get("confirm", False)
@@ -231,7 +243,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 operations.logs.add_user_entry(current_user_id, f"group delete-user {group_id} {user_id}", False,
                                                group_id=group_id)
 
-        case CommandType.GROUP_LIST_REQUEST.value:
+        case CommandType.GROUP_LIST.value:
             try:
                 group_info = operations.list_user_groups(current_user_id)
                 group_info = json.dumps(group_info, indent=2)
@@ -241,19 +253,19 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 conn.send(create_error_packet(str(e)))
                 operations.logs.add_user_entry(current_user_id, "group list", False)
 
-        case CommandType.INIT_GROUP_ADD_REQUEST.value:
+        case CommandType.GROUP_ADD_INIT.value:
             group_id = payload.get("group_id")
             filename = payload.get("filename")
             size     = payload.get("size")
             try:
                 group_key = operations.init_add_file_to_group(current_user_id, group_id, filename, size)
-                server_response = create_packet(CommandType.INIT_GROUP_ADD_RESPONSE.value,
+                server_response = create_packet(CommandType.GROUP_ADD_INIT.value,
                                                 {"group_key": base64.b64decode(group_key)})
                 conn.send(server_response)
             except Exception as e:
                 conn.send(create_error_packet(str(e)))
 
-        case CommandType.GROUP_ADD_REQUEST.value:
+        case CommandType.GROUP_ADD.value:
             group_id  = payload.get("group_id")
             content   = payload.get("content")
             filename  = payload.get("filename")
@@ -262,7 +274,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
             try:
                 group_key = base64.b64encode(group_key).decode("utf-8")
                 file_id = operations.add_file_to_group(current_user_id, group_id, filename, content, size, group_key)
-                conn.send(create_success_packet(f"File ID: {file_id}"))
+                conn.send(create_success_packet(message=f"File ID: {file_id}"))
                 operations.logs.add_user_entry(current_user_id, f"group add {group_id} {filename}", True,
                                                group_id=group_id)
                 operations.logs.add_group_entry(current_user_id, group_id, f"group add {group_id} {filename}", True)
@@ -271,7 +283,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 operations.logs.add_user_entry(current_user_id, f"group add {group_id} {filename}", False,
                                                group_id=group_id)
 
-        case CommandType.GROUP_DELETE_FILE_REQUEST.value:
+        case CommandType.GROUP_DELETE_FILE.value:
             group_id = payload.get("group_id")
             file_id  = payload.get("file_id")
             try:
@@ -285,7 +297,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 operations.logs.add_user_entry(current_user_id, f"group delete-file {group_id} {file_id}", False,
                                                group_id=group_id)
 
-        case CommandType.GROUP_CHANGE_PERMISSIONS_REQUEST.value:
+        case CommandType.GROUP_CHANGE_PERMISSIONS.value:
             group_id    = payload.get("group_id")
             user_id     = payload.get("user_id")
             permissions = payload.get("permissions")
@@ -300,7 +312,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 operations.logs.add_user_entry(current_user_id, f"group change-permissions {group_id} {user_id} {permissions}", False,
                                                group_id=group_id)
 
-        case CommandType.GROUP_ADD_MODERATOR_REQUEST.value:
+        case CommandType.GROUP_ADD_MODERATOR.value:
             user_id = payload.get("user_id")
             group_id = payload.get("group_id")
             try:
@@ -308,17 +320,22 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 user_group_key = base64.b64decode(user_group_key)
                 user_pub_key   = base64.b64decode(user_pub_key)
 
-                intermediate_packet = create_packet(CommandType.GROUP_ADD_MODERATOR_RESPONSE_WITH_KEYS.value,
-                                                    {"group_key": user_group_key,
-                                                     "public_key": user_pub_key})
-                conn.send(intermediate_packet)
+                response = create_packet(CommandType.GROUP_ADD_MODERATOR.value,
+                                         {"group_key": user_group_key,
+                                          "public_key": user_pub_key})
+                conn.send(response)
+            except Exception as e:
+                conn.send(create_error_packet(str(e)))
+                operations.logs.add_user_entry(current_user_id, f"group add-moderator {group_id} {user_id}", False,
+                                               group_id=group_id)
 
+            try:
                 # Await client response with group key encrypted with user public key
                 client_response_packet = receive_packet(conn)
 
                 group_key = base64.b64encode(client_response_packet.get("payload").get("key")).decode("utf-8")
                 operations.add_moderator_to_group(current_user_id, group_id, user_id, group_key)
-                conn.send(create_success_packet(f"Successfully added user '{user_id}' as a moderator on group '{group_id}'."))
+                conn.send(create_success_packet())
                 operations.logs.add_user_entry(current_user_id, f"group add-moderator {group_id} {user_id}", True,
                                                group_id=group_id)
                 operations.logs.add_group_entry(current_user_id, group_id, f"group add-moderator {group_id} {user_id}", True)
@@ -327,12 +344,12 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 operations.logs.add_user_entry(current_user_id, f"group add-moderator {group_id} {user_id}", False,
                                                group_id=group_id)
 
-        case CommandType.GROUP_REMOVE_MODERATOR_REQUEST.value:
+        case CommandType.GROUP_REMOVE_MODERATOR.value:
             group_id = payload.get("group_id")
             moderator_id = payload.get("moderator_id")
             try:
                 operations.remove_moderator_from_group(current_user_id, group_id, moderator_id)
-                conn.send(create_success_packet(f"Successfully demoted moderator '{moderator_id}' from group '{group_id}'."))
+                conn.send(create_success_packet())
                 operations.logs.add_user_entry(current_user_id, f"group remove-moderator {group_id} {moderator_id}", True,
                                                group_id=group_id)
                 operations.logs.add_group_entry(current_user_id, group_id, f"group remove-moderator {group_id} {moderator_id}", True)
@@ -341,45 +358,37 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 operations.logs.add_user_entry(current_user_id, f"group remove-moderator {group_id} {moderator_id}", False,
                                                group_id=group_id)
 
-        case CommandType.LOGS_GLOBAL_REQUEST.value:
+        case CommandType.LOGS_GLOBAL.value:
             try:
                 logs = operations.list_user_logs(current_user_id)
-                response = create_packet(CommandType.LOGS_GLOBAL_RESPONSE.value,
-                                         {"logs": logs})
+                conn.send(create_packet(CommandType.LOGS_GLOBAL.value,
+                                        {"logs": logs}))
             except Exception as e:
-                response = create_error_packet(str(e))
-            finally:
-                conn.send(response)
+                conn.send(create_error_packet(str(e)))
 
-        case CommandType.LOGS_FILE_REQUEST.value:
-            try:
-                file_id = payload.get("file_id")
-                logs = operations.list_user_file_logs(current_user_id, file_id)
-                response = create_packet(CommandType.LOGS_FILE_RESPONSE.value,
-                                         {"logs": logs})
-            except Exception as e:
-                response = create_error_packet(str(e))
-            finally:
-                conn.send(response)
-
-        case CommandType.LOGS_GROUP_REQUEST.value:
-            try:
-                group_id = payload.get("group_id")
-                logs = operations.list_user_group_logs(current_user_id, group_id)
-                response = create_packet(CommandType.LOGS_GROUP_RESPONSE.value,
-                                         {"logs": logs})
-            except Exception as e:
-                response = create_error_packet(str(e))
-            finally:
-                conn.send(response)
-
-        case CommandType.LOGS_GROUP_OWNER_REQUEST.value:
+        case CommandType.LOGS_GROUP_OWNER.value:
             try:
                 group_id = payload.get("group_id")
                 logs = operations.list_group_logs(current_user_id, group_id)
-                response = create_packet(CommandType.LOGS_GROUP_OWNER_RESPONSE.value,
-                                         {"logs": logs})
+                conn.send(create_packet(CommandType.LOGS_GROUP_OWNER.value,
+                                        {"logs": logs}))
             except Exception as e:
-                response = create_error_packet(str(e))
-            finally:
-                conn.send(response)
+                conn.send(create_error_packet(str(e)))
+
+        case CommandType.LOGS_FILE.value:
+            try:
+                file_id = payload.get("file_id")
+                logs = operations.list_user_file_logs(current_user_id, file_id)
+                conn.send(create_packet(CommandType.LOGS_FILE.value,
+                                        {"logs": logs}))
+            except Exception as e:
+                conn.send(create_error_packet(str(e)))
+
+        case CommandType.LOGS_GROUP.value:
+            try:
+                group_id = payload.get("group_id")
+                logs = operations.list_user_group_logs(current_user_id, group_id)
+                conn.send(create_packet(CommandType.LOGS_GROUP.value,
+                                        {"logs": logs}))
+            except Exception as e:
+                conn.send(create_error_packet(str(e)))
