@@ -591,7 +591,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                         "command": f"group add-moderator {group_id} {user_id}",
                         "group_id": group_id
                     })
-                    operations.logs["groups"][group_name].append({
+                    operations.logs["groups"][group_id].append({
                         "executor": current_user_id,
                         "time": timestamp,
                         "status": LogsStatus.SUCCESS.value,
@@ -621,27 +621,25 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                         "executor": current_user_id,
                         "time": timestamp,
                         "status": LogsStatus.SUCCESS.value,
-                        "command": f"group remove-moderator {group_id} {user_id}",
+                        "command": f"group remove-moderator {group_id} {moderator_id}",
                         "group_id": group_id
                     })
-                    operations.logs["groups"][group_name].append({
+                    operations.logs["groups"][group_id].append({
                         "executor": current_user_id,
                         "time": timestamp,
                         "status": LogsStatus.SUCCESS.value,
-                        "command": f"group remove-moderator {group_id} {user_id}"
+                        "command": f"group remove-moderator {group_id} {moderator_id}"
                     })
-                    response = create_success_packet(f"Successfully demoted moderator '{moderator_id}' from group '{group_id}'.")
+                    conn.send(create_success_packet(f"Successfully demoted moderator '{moderator_id}' from group '{group_id}'."))
                 except Exception as e:
                     operations.logs["users"][current_user_id].append({
                         "executor": current_user_id,
                         "time": get_current_timestamp(),
                         "status": LogsStatus.FAILURE.value,
-                        "command": f"group remove-moderator {group_id} {user_id}",
+                        "command": f"group remove-moderator {group_id} {moderator_id}",
                         "group_id": group_id
                     })
-                    response = create_error_packet(str(e))
-                finally:
-                    conn.send(response)
+                    conn.send(create_error_packet(str(e)))
 
             case CommandType.LOGS_GLOBAL_REQUEST.value:
                 try:
