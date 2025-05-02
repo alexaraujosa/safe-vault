@@ -73,7 +73,7 @@ def handleClient(operations, conn: ssl.SSLSocket, addr, config, process_lock):
                     "executor": "system",
                     "time": get_current_timestamp(),
                     "status": LogsStatus.SUCCESS.value,
-                    "command": f"create user"
+                    "command": "create user"
                 })
             print(f"✅ User {user_id} account created.")
 
@@ -81,14 +81,14 @@ def handleClient(operations, conn: ssl.SSLSocket, addr, config, process_lock):
             conn.send(create_packet(CommandType.AUTH_WELCOME.value))
         except UserExists:
             with process_lock:
-                config_client_public_key = base64.b64decode(config.config["users"][user_id]["public_key"]) 
+                config_client_public_key = base64.b64decode(config.config["users"][user_id]["public_key"])
             if config_client_public_key == public_key:
                 # Send welcome back packet
                 operations.logs["users"][user_id].append({
                     "executor": "system",
                     "time": get_current_timestamp(),
                     "status": LogsStatus.SUCCESS.value,
-                    "command": f"authenticate user"
+                    "command": "authenticate user"
                 })
                 conn.send(create_packet(CommandType.AUTH_WELCOME_BACK.value))
                 print(f"✅ User {user_id} authenticated.")
@@ -98,7 +98,7 @@ def handleClient(operations, conn: ssl.SSLSocket, addr, config, process_lock):
                     "executor": "system",
                     "time": get_current_timestamp(),
                     "status": LogsStatus.FAILURE.value,
-                    "command": f"authenticate user"
+                    "command": "authenticate user"
                 })
                 conn.send(create_packet(CommandType.AUTH_USER_ALREADY_TOOK.value))
                 print(f"❌ Attempt to authenticate as {user_id}, but detected different public key!")
@@ -128,9 +128,8 @@ def handleClient(operations, conn: ssl.SSLSocket, addr, config, process_lock):
                 with process_lock:
                     process_request(operations, user_id, conn, packet_data)
 
-                # DEBUG update the config file on every operation
-                if G_CONFIG_DEBUG:
-                    with process_lock:
+                    # DEBUG update the config file on every operation
+                    if G_CONFIG_DEBUG:
                         config.save(config=operations.config)
             except ssl.SSLEOFError:
                 print(f"🚧 Client connection from {addr} died before server could close it.")
