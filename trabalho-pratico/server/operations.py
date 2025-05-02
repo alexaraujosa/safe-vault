@@ -887,21 +887,24 @@ class Operations:
         # Extract the user and file name from the file ID
         file_owner_id, _, file_name = file_id.partition(":")
         self.user_exists(file_owner_id)
-        self.file_exists(file_owner_id, file_name)
 
         # Determine if the current user can read the file, meaning
         # he is the owner, a shared user or member of a group with that file
-        is_owner = current_user_id == file_owner_id
-        is_shared_user = file_owner_id in self.config["users"][current_user_id]["shared_files"]
-        is_group_member = False
-        for group_id in self.config["users"][file_owner_id]["files"][file_name]["acl"]["groups"]:
-            if current_user_id in self.config["groups"][group_id]["members"]:
-                is_group_member = True
-                break
+        if file_name in self.config["users"][file_owner_id]["files"]:
+            is_owner = current_user_id == file_owner_id
+            is_shared_user = file_owner_id in self.config["users"][current_user_id]["shared_files"]
+            is_group_member = False
+            for group_id in self.config["users"][file_owner_id]["files"][file_name]["acl"]["groups"]:
+                if current_user_id in self.config["groups"][group_id]["members"]:
+                    is_group_member = True
+                    break
 
-        if not (is_owner or is_shared_user or is_group_member):
-            raise PermissionDenied(f"User {current_user_id} does not have permission "
-                                   f"to read the file {file_id}.")
+            if not (is_owner or is_shared_user or is_group_member):
+                raise PermissionDenied("Invalid permissions to read the file or "
+                             f"the file '{file_id}' does not exists on user '{file_owner_id}' vault.")
+        else:
+            raise ValueError("Invalid permissions to read the file or "
+                             f"the file '{file_id}' does not exists on user '{file_owner_id}' vault.")
 
         # Get the key for the user reading the file
         key = None
