@@ -12,9 +12,10 @@ from bson import BSON
 
 from common.keystore   import Keystore
 from common.validation import is_valid_file
+from common.packet     import read_fully, CommandType
 from client.encryption import RSA
 from client.handler    import process_command
-from common.packet     import read_fully, CommandType
+from client.usage      import _full as full_usage
 
 SERVER_ID = "VAULT_SERVER"
 DEFAULT_CA = "assets/certs/VAULT_CA.crt"  # Default path for server CA certificate
@@ -152,7 +153,13 @@ def main():
                     doubleSIGINT = False
                     args = shlex.split(command)
 
-                    if args[0] == "exit":
+                    if args[0] == "whoami":
+                        print(user_id)
+                        continue
+                    elif args[0] == "help":
+                        print(full_usage)
+                        continue
+                    elif args[0] == "exit":
                         break
 
                     try:
