@@ -688,12 +688,14 @@ class Operations:
         self.user_exists(current_user_id)
         self.group_exists(group_id)
 
-        # Check if the user is a member with write permissions in the group
         group = self.config["groups"][group_id]
-        is_member = current_user_id in group["members"]
-        has_write_permissions = group["members"][current_user_id]["permissions"] == "w"
 
-        if not (is_member and has_write_permissions):
+        # Check if the user is a member of the group
+        if current_user_id not in group["members"]:
+            raise UserNotMemberOfGroup(current_user_id, group_id)
+
+        # Check if the member has write permissions
+        if group["members"][current_user_id]["permissions"] != "w":
             raise PermissionDenied(f"User {current_user_id} does not have permission "
                                    f"to write to group {group_id}.")
 
@@ -721,12 +723,14 @@ class Operations:
         self.user_exists(current_user_id)
         self.group_exists(group_id)
 
-        # Check if the user is a member with write permissions in the group
         group = self.config["groups"][group_id]
-        is_member = current_user_id in group["members"]
-        has_write_permissions = group["members"][current_user_id]["permissions"] == "w"
 
-        if not (is_member and has_write_permissions):
+        # Check if the user is a member of the group
+        if current_user_id not in group["members"]:
+            raise UserNotMemberOfGroup(current_user_id, group_id)
+
+        # Check if the member has write permissions
+        if group["members"][current_user_id]["permissions"] != "w":
             raise PermissionDenied(f"User {current_user_id} does not have permission "
                                    f"to write to group {group_id}.")
 
@@ -771,7 +775,10 @@ class Operations:
 
         # Check if the file exists in the group
         group_files = self.config["groups"][group_id]["files"]
-        if user_id not in group_files and file_id not in group_files[user_id]:
+        if user_id not in group_files:
+            raise PermissionDenied(f"User {user_id} does not have any files in group {group_id}.")
+
+        if file_id not in group_files[user_id]:
             raise PermissionDenied(f"File {file_id} does not exist in group {group_id}.")
 
         # Delete the file from the group metadata
