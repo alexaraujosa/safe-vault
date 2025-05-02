@@ -1,6 +1,7 @@
 #!/bin/sh
 
-# Removes the default config, logs and vault files from the server directory.
+# Removes json files and the default vault directory from the server directory,
+# and client's history files.
 
 # If the -f flag is passed don't ask for confirmation.
 I_FLAG="-i"
@@ -28,6 +29,7 @@ execute() {
     "$@"
 }
 
-# Remove the default config, logs and vault files from the server directory.
+# Cleanup
+execute rm $I_FLAG .*_history
 execute rm $I_FLAG server/*.json
 execute rm $I_FLAG -r server/vault/
