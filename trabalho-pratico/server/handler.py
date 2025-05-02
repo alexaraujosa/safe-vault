@@ -28,7 +28,7 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 try:
                     file_key = base64.b64encode(file_key).decode("utf-8")
                     operations.add_file_to_user(current_user_id, filename, content, file_key, size)
-                    conn.send(create_success_packet(f"File '{current_user_id}:{filename}' added successfully to the vault."))
+                    conn.send(create_success_packet(f"File ID: {current_user_id}:{filename}"))
                     operations.logs["users"][current_user_id].append({
                         "executor": current_user_id,
                         "time": get_current_timestamp(),
