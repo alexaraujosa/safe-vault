@@ -8,6 +8,7 @@ TODO
 
 - Imagem descritiva
 - Argumentos passados para cada programa
+- Módulos do serviço
 TODO
 
 ## Comunicação entre cliente e servidor
