@@ -55,11 +55,6 @@ def is_valid_size(size: int) -> bool:
     return isinstance(size, int) and size >= 0
 
 
-def is_valid_file_path(file_path: str) -> bool:
-    "Check if the given path is valid."
-    return os.path.exists(file_path)
-
-
 def validate_params(**kwargs) -> None:
     """
     Validate the given parameters.
@@ -73,7 +68,6 @@ def validate_params(**kwargs) -> None:
     - permissions: str
     - key:         str
     - size:        int
-    - file_path:   string
 
     Raises:
     - ValueError for the first validation error found.
@@ -106,8 +100,5 @@ def validate_params(**kwargs) -> None:
             case "size":
                 if not is_valid_size(value):
                     raise ValueError(f"Invalid size: '{value}'")
-            case "file_path":
-                if not is_valid_file_path(value):
-                    raise ValueError(f"Invalid file path: '{value}'")
             case _:
                 raise InvalidParameter(key)
