@@ -592,24 +592,24 @@ def process_command(client_socket: socket,
                         else:
                             handle_boolean_response(response)
                     elif len(args) == 4:
-                        if args[2] == "-g":
-                            validate_params(group_id=(group_id := args[3]))
-
-                            # Send group id to the server
-                            packet = create_packet(CommandType.LOGS_GROUP_OWNER_REQUEST.value,
-                                                   {"group_id": group_id})
-                            server_socket.send(packet)
-
-                            # Await server response
-                            response = receive_packet(server_socket)
-                            if response.get("type") == CommandType.LOGS_GROUP_OWNER_RESPONSE.value:
-                                print_logs(response.get("payload").get("logs"))
-                            else:
-                                handle_boolean_response(response)
-                        else:
+                        if args[2] != "-g":
                             raise ValueError(f"Invalid arguments.\nUsage: {usage._logs_user_global}")
+                        validate_params(group_id=(group_id := args[3]))
+
+                        # Send group id to the server
+                        packet = create_packet(CommandType.LOGS_GROUP_OWNER_REQUEST.value,
+                                               {"group_id": group_id})
+                        server_socket.send(packet)
+
+                        # Await server response
+                        response = receive_packet(server_socket)
+                        if response.get("type") == CommandType.LOGS_GROUP_OWNER_RESPONSE.value:
+                            print_logs(response.get("payload").get("logs"))
+                        else:
+                            handle_boolean_response(response)
                     else:
                         raise ValueError(f"Invalid arguments.\nUsage: {usage._logs_user_global}")
+
                 case "file":
                     if len(args) != 3:
                         raise ValueError(f"Invalid arguments.\nUsage: {usage._logs_user_file}")
@@ -626,15 +626,16 @@ def process_command(client_socket: socket,
                         print_logs(response.get("payload").get("logs"))
                     else:
                         handle_boolean_response(response)
+
                 case "group":
                     if len(args) != 3:
                         raise ValueError(f"Invalid arguments.\nUsage: {usage._logs}")
 
                     validate_params(group_id=(group_id := args[2]))
-                    
+
                     # Send group id to the server
                     packet = create_packet(CommandType.LOGS_GROUP_REQUEST.value,
-                                            {"group_id": group_id})
+                                           {"group_id": group_id})
                     server_socket.send(packet)
 
                     # Await server response
@@ -643,6 +644,7 @@ def process_command(client_socket: socket,
                         print_logs(response.get("payload").get("logs"))
                     else:
                         handle_boolean_response(response)
+
                 case _:
                     raise ValueError(f"Invalid arguments.\nUsage: {usage._logs}")
         case _:
