@@ -10,10 +10,28 @@ armazenar todas as informações necessárias para o funcionamento do serviço, 
 - Estrutura de grupos e respetivas permissões;
 - Relações de partilha e controlo de acesso.
 
-Esta, em conjunto do módulo `server.operations`, garante o controlo de
-acesso e gestão segura dos recursos do sistema. É persistido em formato JSON
-no fim da execução do servidor e carregado automaticamente aquando o servidor é
-inicializado.
+Em conjunto com o módulo `server.operations`, esta garante o controlo de
+acesso e gestão segura dos recursos do sistema. É persistida em formato JSON
+no fim da execução do servidor e carregado automaticamente aquando da sua
+inicialização.
+
+## Vantagens
+
+Optar por uma estrutura de metadata própria, em vez de depender unicamente das
+permissões nativas dos sistemas POSIX, traz diversas vantagens, entre as quais
+se destacam:
+
+- **Funcionalidades avançadas**: Permite a implementação de mecanismos como
+    partilhas granulares (com permissões distintas por utilizador ou grupo),
+    controlo hierárquico de grupos e permissões temporárias ou condicionais,
+    que não são suportados diretamente pelo modelo POSIX.
+- **Maior controlo lógico e de segurança**: Garante uma gestão mais flexível e
+    rigorosa do acesso, sem as limitações impostas pelo modelo tradicional de
+    *ownership* e permissões do sistema de ficheiros.
+- **Melhor desempenho**: Ao evitar chamadas ao sistema como `stat` ou `getfacl`
+    em cada operação, reduz-se significativamente o número de *syscalls*, o que
+    contribui para uma execução mais eficiente, sobretudo em cenários com grande
+    volume de acessos ou utilizadores.
 
 ## Estrutura
 
@@ -80,20 +98,19 @@ inicializado.
 ## Notas
 
 1. **Identificadores Únicos**:
-    - `user_id`: É o nome de utilizador do utilizador, único e imutável,
-        obtido através do campo `COMMON_NAME` do certificado X.509;
-    - `file_id`: Segue o formato `user_id:filename`, onde `user_id` é o ID do
-        dono do ficheiro e `filename` é o nome (*basename*) do ficheiro;
-    - `group_id`: É o nome do grupo, único e imutável, definido pelo dono na sua criação.
+    - `user_id`: Nome de utilizador, único e imutável, obtido através do campo
+        `PSEUDONYM` do certificado X.509;
+    - `file_id`: Segue o formato `user_id:filename`, onde `user_id` é o ID do dono
+        do ficheiro e `filename` o nome (*basename*) do ficheiro;
+    - `group_id`: Nome do grupo, único e imutável, definido pelo dono na sua criação.
 
 2. **Segurança**:
-    - Todas as chaves simétricas (AES) são armazenadas encriptadas com a chave privada
-        do respetivo utilizador a, futuramente, aceder ao ficheiro, garantindo que
-        o servidor não tem acesso a estas chaves e por consequente ao conteúdo dos
-        ficheiros;
-    - A chave (mestra) simétrica de cada grupo é gerada pelo dono do grupo e é
-        encriptada com a chave pública de cada membro, garantindo que apenas os
-        membros do grupo podem aceder à chave simétrica dos ficheiros do grupo.
+    - Todas as chaves simétricas (AES) são armazenadas encriptadas com a chave
+        pública (RSA) do respetivo utilizador, garantindo que o servidor não tem
+        acesso às chaves nem ao conteúdo dos ficheiros;
+    - A chave (mestra) simétrica de cada grupo é gerada pelo dono e encriptada
+        com a chave pública de cada membro, garantindo que apenas estes
+        conseguem aceder aos ficheiros do grupo;
 
 3. **Controlo de Acesso**:
     - Modelo hierárquico de permissões:
@@ -102,25 +119,29 @@ inicializado.
         2. **Acessos concedidos**
             - Partilhas diretas: com permissões atribuídas individualmente;
             - Membros de grupos: herdam as permissões definidas no grupo
-                (note que o dono do grupo pode remover um ficheiro do grupo,
-                contudo o dono do ficheiro mantém o acesso).
+                (note que o criador do grupo pode remover um ficheiro deste,
+                contudo o dono original mantém o acesso).
         3. **Outros utilizadores**:
             - Sem quaisquer permissões.
-    - O controlo de acesso é gerido através das listas de controlo de acesso (ACL),
-        onde cada ficheiro tem uma lista de utilizadores com permissões específicas,
-        e, para grupos, as permissões são armazenadas na lista de membros do grupo.
+    - O controlo de acesso é gerido por ACLs (Listas de Controlo de Acesso),
+        onde cada ficheiro tem uma lista de recipientes de partilhas com permissões
+        específicas, e, para grupos, as permissões são armazenadas na sua lista
+        de membros.
 
 4. **Eficiência**:
-    - A estrutura de dados é organizada de forma a minimizar o tempo de pesquisa
-        de forma a maximizar a eficiência das operações, existindo assim alguns
-        dados redundantes para facilitar a procura de permissões de partilhas e
-        quais os grupos a que um ficheiro pertence. O módulo `server.operations`
-        é responsável por garantir a consistência desses dados.
+    - A estrutura é desenhada para minimizar o tempo de pesquisa, incluindo alguns
+        dados redundantes para facilitar a verificação de permissões e pertença
+        a grupos. O módulo `server.operations` assegura a consistência desses dados.
 
 5. **Compatibilidade**:
-    - TODO
+    - **Multiplataforma**: Este formato JSON é compatível com qualquer sistema
+        operativo, incluindo sistemas não POSIX como Windows. Esta abstração
+        evita dependência de *syscalls* como `chmod`, `stat` ou `setfacl`, e do
+        modelo de permissões baseado em UID/GID.
+    - **Interoperabilidade**: A estrutura é autocontida e independente da plataforma,
+        podendo ser facilmente exportada, transportada ou integrada com outros serviços.
 
 No próximo capítulo aprofundar-se-á como o ficheiro de metadata é utilizado
-aquando diferentes comandos do cliente são executados, também abordar-se-á
-o conceito introduzido de moderador de um grupo e comandos adicionais aos
-requisitos providenciados.
+aquando da execução de diferentes comandos do cliente, bem como abordar-se-á
+o conceito introduzido de moderador de um grupo e comandos adicionais para além
+dos requisitos inicialmente providenciados.
