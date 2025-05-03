@@ -74,13 +74,16 @@ TODO
 ## Trabalho futuro
 
 - Próprio formato do sistema de logs, em vez de guardar em ficheiros json
-- Maior concorrência no servidor, permitindo um cliente enviar vários pedidos ao mesmo tempo
+- Concorrência nas operações do servidor, permitindo vários cliente enviar vários pedidos ao mesmo tempo
 
 TODO
 
 ## Possíveis valorizações
 
 - Lista com todas as valorizações que foram implementadas e detalhadas no relatório
+- Atomic writes (server/operations)
+- Path traversal (server/operations)
+- File enumeration (server/operations)
 TODO
 
 ## Conclusão
