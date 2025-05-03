@@ -73,9 +73,9 @@ TODO
 
 ## Trabalho futuro
 
-- Próprio formato do sistema de logs, em vez de guardar em ficheiros json
+- Encriptação com Curvas Elípticas por uma maior força criptográfica em relação ao tamanho da chave.
 - Concorrência nas operações do servidor, permitindo vários cliente enviar vários pedidos ao mesmo tempo
-
+- Próprio formato do sistema de logs, em vez de guardar em ficheiros json
 TODO
 
 ## Possíveis valorizações
