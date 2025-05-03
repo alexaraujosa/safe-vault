@@ -313,6 +313,10 @@ class Operations:
             raise PermissionDenied(f"User {user_id_to_share} is the owner of file {file_id}.")
 
         # Check if the current user is the owner of the file
+        # INFO Here we could also check if:
+        # - the current user is a member of a group that has access to the file
+        # - the current user is being shared this file by another user
+        # To follow project requirements we will only allow sharing files from the user personal vault
         if current_user_id != file_owner_id:
             raise PermissionDenied(f"User {current_user_id} is not the owner of file {file_id}.")
 
