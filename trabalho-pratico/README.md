@@ -9,6 +9,7 @@ TODO
 - Imagem descritiva
 - Argumentos passados para cada programa
 - Módulos do serviço
+- Referir o estilo de servidor (semelhante a zero-trust)
 TODO
 
 ## Comunicação entre cliente e servidor
@@ -35,14 +36,32 @@ TODO
 - Criação da nossa própria gestão (referindo o porquê de não utilizarmos primitivas do linux e a possibilidade de execução em diversos sistemas operativos)
 - Encriptação envolvida (conteúdo de ficheiros, salvaguarda de chaves públicas, simétricas)
 - Suposta re-encriptação de conteúdos ao revogar permissões
+- Formato dos identificadores unicos
 TODO
 
 ## Execução de comandos
 
+A aplicação do cliente implementa uma diversidade de comandos que permitem aos utilizadores interagirem
+com o serviço de cofre seguro. Estes comandos em conjunto com o sistema de gestão criado levam à 
+cobertura de todas as funcionalidades descritas no enunciado, nomeadamente, a manipulação de ficheiros e 
+a gestão de grupos. Para além desta base, a equipa de trabalho acrescentou comandos que permitem uma maior
+composição a nível dos grupos através da criação de uma nova entidade, os moderadores, que possuem, para
+além da permissão de escrita em ficheiros do grupo, a possibilidade de adicionarem e removerem novos membros
+aos grupos, refletindo um maior poder administrativo nesta componente do serviço, mesmo quando o dono do grupo 
+não está disponível. Por outro lado, o desenvolvimento de um sistema de _log_ persistente, tal como será
+detalhado posteriormente, levou à necessidade de serem criados mais comandos, possibilitando a consulta
+dessas mesmas _logs_, de forma global ou seletiva por parte dos clientes.
+
+TODO agrupar os comandos por categoria e listá-los
+TODO falar sobre os comandos adicionais implementados, bem como a nova opcao do list e o delete group file,
+que o dono do grupo apaga o ficheiro apenas no grupo, nao tendo poder para apagar o ficheiro no vault do user,
+e o dono do ficheiro pode apagar o ficheiro apenas no grupo, ou entao depois apagar do seu vault tambem.
+
 - Referir os comandos implementados
 - Validação em ambos os lados (evitar sobrecarga no server + pacotes com valores alterados a meio do envio, exemplificando)
-- Referir comandos suportados pela nossa criação da gestão de utilizadores/grupos/ficheiros (moderadores)
+- Referir que a validação é suportada pela nossa criação da gestão de utilizadores/grupos/ficheiros (moderadores)
 - Referir ataques bloqueados com validações de parâmetros (ex.: privilege escalation nos grupos)
+- Referir prevenção de file enumeration (ex.: tentar ler o conteúdo de um vault diz que ou é erro de permissão ou não existe, em vez de dizer se existe ou não)
 - Imagens com pacotes capturados pelo sniffer, mostrando o conteudo encriptado e desencriptado
 TODO
 
