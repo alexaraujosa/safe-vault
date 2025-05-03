@@ -696,19 +696,28 @@ class Operations:
         # Change the user's permissions in the group
         self.config["groups"][group_id]["members"][user_id]["permissions"] = permissions
 
-    def list_user_groups(self,
-                         current_user_id: str) -> dict:
+    def list_user_groups(self, current_user_id: str) -> list[tuple[str, str]]:
+        """
+        List all groups the user is a member of.
+        The groups are returned in a list of tuples with the group id and the permissions.
+        The permissions can be "r", "w", "Moderator" or "Owner".
+        """
 
         validate_params(user_id=current_user_id)
         self.user_exists(current_user_id)
 
-        results = {}
-
-        for group_id in self.config["users"][current_user_id]["groups"]:
+        # List all groups the user is a member of
+        results = []
+        groups = self.config["users"][current_user_id]["groups"]
+        for group_id in groups:
             group = self.config["groups"][group_id]
-            results[group_id] = {
-                "permissions": group["members"][current_user_id]["permissions"],
-            }
+            permissions = group["members"][current_user_id]["permissions"]
+            if current_user_id == group["owner"]:
+                permissions = "Owner"
+            elif current_user_id in group["moderators"]:
+                permissions = "Moderator"
+
+            results.append((group_id, permissions))
 
         return results
 

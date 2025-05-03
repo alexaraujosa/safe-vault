@@ -1,5 +1,4 @@
 import ssl
-import json
 import base64
 from server.operations import Operations
 from common.exceptions import NeedConfirmation
@@ -251,9 +250,8 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
 
         case PacketType.GROUP_LIST.value:
             try:
-                group_info = operations.list_user_groups(current_user_id)
-                group_info = json.dumps(group_info, indent=2)
-                conn.send(create_success_packet(message=group_info))
+                groups = operations.list_user_groups(current_user_id)
+                conn.send(create_packet(PacketType.GROUP_LIST.value, {"groups": groups}))
                 operations.logs.add_user_entry(current_user_id, "group list", True)
             except Exception as e:
                 conn.send(create_error_packet(str(e)))

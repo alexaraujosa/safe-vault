@@ -440,7 +440,7 @@ def process_command(client_socket: socket,
 
                     handle_boolean_response(response)
 
-                case "list":  # TODO better output
+                case "list":
                     if len(args) != 2:
                         raise ValueError(f"Invalid arguments.\nUsage: {usage._group_list}")
 
@@ -448,9 +448,20 @@ def process_command(client_socket: socket,
                     packet = create_packet(PacketType.GROUP_LIST.value, {})
                     server_socket.send(packet)
 
-                    # Await server response (SUCCESS | ERROR)
+                    # Await server response (GROUP_LIST | ERROR)
                     response = receive_packet(server_socket)
-                    print(response.get("payload").get("message"))
+                    payload  = response.get("payload")
+                    if response.get("type") == PacketType.ERROR.value:
+                        print(payload.get("message"))
+                        return
+
+                    # Print the results
+                    if len(payload) == 0:
+                        print("You have no access to any groups.")
+                        return
+
+                    headers = ["Group ID", "Permissions"]
+                    print(tabulate(payload.get("groups"), headers=headers, tablefmt="rounded_outline"))
 
                 case "add":
                     if len(args) != 4:
