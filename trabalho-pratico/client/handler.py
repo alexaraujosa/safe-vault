@@ -101,6 +101,10 @@ def process_command(client_socket: socket,
                 case []:  # list
                     packet = create_packet(PacketType.LIST.value, {})
 
+                case ["-o"]:  # list -o
+                    packet = create_packet(PacketType.LIST.value,
+                                           {"owner": True})
+
                 case ["-u", user_id]:  # list -u <user_id>
                     validate_params(user_id=user_id)
                     packet = create_packet(PacketType.LIST.value,
@@ -125,22 +129,39 @@ def process_command(client_socket: socket,
 
             # Print the results
             if len(payload) == 0:
-                print("No files found.")
+                print("You have no access to any files.")
                 return
 
-            match rest:
-                case []:
-                    print("Files on your vault:")
-                    for file in payload:
-                        print(f"[-] {file}")
-                case ["-u", user_id]:
-                    print(f"Files shared by the user '{user_id}':")
-                    for file, permission in payload:
-                        print(f"[-] [{permission}] {file}")
-                case ["-g", group_id]:
-                    for file, info in payload:
-                        permission = info.get("permissions")
-                        print(f"[-] [{permission}] {file}")
+            first = True
+            for k, v in payload.items():
+                if not first:
+                    print()
+
+                match k:
+                    case "owned_files":
+                        if len(v) == 0:
+                            print("You don't own any files.")
+                            continue
+                        print("Owned files:")
+                        headers = ["File ID"]
+                        table_data = [[file_id] for file_id in v]  # to ensure proper format
+                    case "shared_files":
+                        if len(v) == 0:
+                            print("You don't have any files being shared with you.")
+                            continue
+                        print("Shared files:")
+                        headers = ["File ID", "Permissions"]
+                        table_data = v
+                    case "group_files":
+                        if len(v) == 0:
+                            print("You don't have any files in groups you are a member of.")
+                            continue
+                        print("Group files:")
+                        headers = ["File ID", "Permissions", "Group ID"]
+                        table_data = v
+
+                print(tabulate(table_data, headers=headers, tablefmt="rounded_outline"))
+                first = False
 
         case "share":
             if len(args) != 4:

@@ -169,8 +169,8 @@ class Operations:
             }
         }
 
-    def list_user_personal_files(self,
-                                 current_user_id: str) -> list:
+    def list_user_owned_files(self,
+                              current_user_id: str) -> list[str]:
 
         validate_params(user_id=current_user_id)
         self.user_exists(current_user_id)
@@ -199,31 +199,68 @@ class Operations:
             for filename in shared_files[shared_by_user_id]
         ]
 
+    def list_all_user_shared_files(self,
+                                   current_user_id: str) -> list[tuple[str, str]]:
+        validate_params(user_id=current_user_id)
+        self.user_exists(current_user_id)
+
+        # List all files shared with the user
+        files = []
+        for shared_by_user_id in self.config["users"][current_user_id]["shared_files"]:
+            # Get the shared user permissions
+            permissions = self.config["users"][current_user_id]["shared_files"][shared_by_user_id]
+
+            # List all files shared by the user
+            for filename in permissions:
+                files.append((f"{shared_by_user_id}:{filename}", permissions[filename]["permissions"]))
+
+        # Return the list with the (fileid, permissions) tuples
+        return files
+
     def list_user_group_files(self,
                               current_user_id: str,
-                              group_id: str) -> list:
+                              group_id: str) -> list[tuple[str, str]]:
 
         validate_params(user_id=current_user_id,
                         group_id=group_id)
         self.user_exists(current_user_id)
         self.group_exists(group_id)
 
-        # List the user files in groups he's a member of
+        # List the user files for the given group
         files = []
         user = self.config["users"][current_user_id]
         group_files = self.config["groups"][group_id]["files"]
 
-        if group_id in user["groups"]:
-            # Get the user permissions in the group
-            permissions = self.config["groups"][group_id]["members"][current_user_id]
+        if group_id not in user["groups"]:
+            raise UserNotMemberOfGroup(current_user_id, group_id)
+
+        # Get the user permissions in the group
+        permissions = self.config["groups"][group_id]["members"][current_user_id]
+
+        # List all files in the group
+        for file_owner in group_files:
+            for filename in group_files[file_owner]:
+                files.append((f"{file_owner}:{filename}", permissions))
+
+        return files
+
+    def list_all_user_group_files(self,
+                                  current_user_id: str) -> list[tuple[str, str, str]]:
+        validate_params(user_id=current_user_id)
+        self.user_exists(current_user_id)
+
+        # List all files in groups the user is a member of
+        files = []
+        for group_id in self.config["users"][current_user_id]["groups"]:
+            group_files = self.config["groups"][group_id]["files"]
+            user_permissions = self.config["groups"][group_id]["members"][current_user_id]["permissions"]
 
             # List all files in the group
             for file_owner in group_files:
                 for filename in group_files[file_owner]:
-                    files.append((f"{file_owner}:{filename}", permissions))
-        else:
-            raise UserNotMemberOfGroup(current_user_id, group_id)
+                    files.append((f"{file_owner}:{filename}", user_permissions, group_id))
 
+        # Return the list with the (fileid, permissions, group_id) tuples
         return files
 
     def init_share_user_file(self,

@@ -32,18 +32,24 @@ def process_request(operations: Operations, current_user_id: str, conn: ssl.SSLS
                 operations.logs.add_user_entry(current_user_id, filename, False, file_id=file_id)
 
         case PacketType.LIST.value:
+            response_payload = {}
             try:
-                if user_id := payload.get("user_id"):
+                if payload.get("owned"):
+                    command = "list -o"
+                    response_payload["owned_files"]  = operations.list_user_owned_files(current_user_id)
+                elif user_id := payload.get("user_id"):
                     command = f"list -u {user_id}"
-                    payload = operations.list_user_shared_files(current_user_id, user_id)
+                    response_payload["shared_files"] = operations.list_user_shared_files(current_user_id, user_id)
                 elif group_id := payload.get("group_id"):
                     command = f"list -g {group_id}"
-                    payload = operations.list_user_group_files(current_user_id, group_id)
+                    response_payload["group_files"]  = operations.list_user_group_files(current_user_id, group_id)
                 elif not payload:
                     command = "list"
-                    payload = operations.list_user_personal_files(current_user_id)
+                    response_payload["owned_files"]  = operations.list_user_owned_files(current_user_id)
+                    response_payload["shared_files"] = operations.list_all_user_shared_files(current_user_id)
+                    response_payload["group_files"]  = operations.list_all_user_group_files(current_user_id)
 
-                conn.send(create_packet(PacketType.LIST.value, payload))
+                conn.send(create_packet(PacketType.LIST.value, response_payload))
                 operations.logs.add_user_entry(current_user_id, command, True)
             except Exception as e:
                 conn.send(create_error_packet(str(e)))

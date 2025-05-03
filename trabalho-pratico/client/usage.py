@@ -1,6 +1,6 @@
 # Client commands usage
 _add                      = "add <file-path>"
-_list                     = "list [-u user_id | -g group_id]"
+_list                     = "list [-o | -u user_id | -g group_id]"
 _share                    = "share <file-id> <user-id> <permissions>"
 _delete                   = "delete <file-id>"
 _replace                  = "replace <file-id> <file-path>"
