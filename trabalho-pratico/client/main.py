@@ -56,10 +56,10 @@ def setup_readline(user_id: str):
 
 def main():
     parser = argparse.ArgumentParser("client")
-    parser.add_argument("--keystore", type=str, required=True,                       help="Client's keystore file")
-    parser.add_argument("--cert",     type=str, required=False, default=DEFAULT_CA,  help="Server's CA certificate file")
-    parser.add_argument("--host",     type=str, required=False, default="127.0.0.1", help="Server hostname or IP address")
-    parser.add_argument("--port",     type=int, required=False, default=8443,        help="Server port number")
+    parser.add_argument("--keystore",   type=str, required=True,                       help="client's keystore file")
+    parser.add_argument("--cert",       type=str, required=False, default=DEFAULT_CA,  help="set server's CA certificate file")
+    parser.add_argument("--host",       type=str, required=False, default="127.0.0.1", help="set server hostname or IP address")
+    parser.add_argument("--port", "-p", type=int, required=False, default=8443,        help="set server port number")
     args = parser.parse_args()
 
     # Validate command line arguments

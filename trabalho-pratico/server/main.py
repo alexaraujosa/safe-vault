@@ -146,13 +146,13 @@ def handleClient(operations, conn: ssl.SSLSocket, addr, config, process_lock):
 def main():
     # Command line arguments
     parser = argparse.ArgumentParser("server")
-    parser.add_argument("--cert",        type=str, required=False, default=DEFAULT_CA,   help="Server CA certificate file.")
-    parser.add_argument("--keystore",    type=str, required=False, default=DEFATULT_P12, help="Server keystore file.")
-    parser.add_argument("--port",        type=int, required=False, default=8443,         help="Port number to listen on.")
-    parser.add_argument("--config",      type=str, required=False, default=CONFIG_PATH,  help="Config file path.")
-    parser.add_argument("--vault",       type=str, required=False, default=VAULT_PATH,   help="Vault file path.")
-    parser.add_argument("--logs",        type=str, required=False, default=LOGS_PATH,    help="Logs file path.")
-    parser.add_argument("--debug", "-d",           required=False, default=False,        help="Enable debug mode.", action=argparse.BooleanOptionalAction)
+    parser.add_argument("--cert",        type=str, required=False, default=DEFAULT_CA,   help="set server CA certificate file")
+    parser.add_argument("--keystore",    type=str, required=False, default=DEFATULT_P12, help="set server keystore file")
+    parser.add_argument("--port", "-p",  type=int, required=False, default=8443,         help="set port number to listen on")
+    parser.add_argument("--config",      type=str, required=False, default=CONFIG_PATH,  help="set config file path")
+    parser.add_argument("--vault",       type=str, required=False, default=VAULT_PATH,   help="set vault file path")
+    parser.add_argument("--logs",        type=str, required=False, default=LOGS_PATH,    help="set logs file path")
+    parser.add_argument("--debug", "-d",           required=False, default=False,        help="enable debug mode", action=argparse.BooleanOptionalAction)
     args = parser.parse_args()
 
     # Validate command line arguments
