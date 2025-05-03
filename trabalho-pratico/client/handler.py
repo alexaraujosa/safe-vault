@@ -235,7 +235,7 @@ def process_command(client_socket: socket,
                 raise ValueError(f"Invalid arguments.\nUsage: {usage._details}")
             validate_params(file_id=(file_id := args[1]))
 
-            packet = create_packet(PacketType.DETAILS_REQUEST.value,
+            packet = create_packet(PacketType.DETAILS.value,
                                    {"file_id": file_id})
             server_socket.send(packet)
 
@@ -274,7 +274,7 @@ def process_command(client_socket: socket,
             validate_params(file_id=(file_id := args[1]),
                             user_id=(user_id := args[2]))
 
-            packet = create_packet(PacketType.REVOKE_REQUEST.value,
+            packet = create_packet(PacketType.REVOKE.value,
                                    {"file_id": file_id, "user_id": user_id})
             server_socket.send(packet)
 
