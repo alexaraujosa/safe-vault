@@ -79,7 +79,7 @@ def process_command(client_socket: socket,
             file_key = AES_GCM.generate_key()
 
             # Encrypt content with symmetric key
-            enc_content = BSON.encode(AES_GCM.encrypt(content, file_key))  # TODO check if BSON is needed here
+            enc_content = BSON.encode(AES_GCM.encrypt(content, file_key))
 
             # Encrypt file master key with client public key
             enc_file_key = RSA.encrypt(file_key, client_public_key)
@@ -222,7 +222,7 @@ def process_command(client_socket: socket,
             # Encrypt new file contents
             enc_content = AES_GCM.encrypt(new_content, file_symmetric_key)
             packet_replace = create_packet(PacketType.REPLACE.value,
-                                           {"content": BSON.encode(enc_content),  # TODO check if BSON is needed here
+                                           {"content": BSON.encode(enc_content),
                                             "size": len(new_content)})
             server_socket.send(packet_replace)
 
