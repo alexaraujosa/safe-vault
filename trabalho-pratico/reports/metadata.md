@@ -1,6 +1,6 @@
-# Metadata
+## Metadata: Gestão de Utilizadores, Grupos e Ficheiros
 
-## Objetivo
+### Objetivo
 
 A metadata é uma componente essencial do sistema de Cofre Seguro, responsável por
 armazenar todas as informações necessárias para o funcionamento do serviço, incluindo:
@@ -15,7 +15,7 @@ acesso e gestão segura dos recursos do sistema. É persistida em formato JSON
 no fim da execução do servidor e carregado automaticamente aquando da sua
 inicialização.
 
-## Vantagens
+### Vantagens
 
 Optar por uma estrutura de metadata própria, em vez de depender unicamente das
 permissões nativas dos sistemas POSIX, traz diversas vantagens, entre as quais
@@ -33,7 +33,7 @@ se destacam:
     contribui para uma execução mais eficiente, sobretudo em cenários com grande
     volume de acessos ou utilizadores.
 
-## Estrutura
+### Estrutura
 
 ```json
 {
@@ -51,7 +51,7 @@ se destacam:
           "created": "datetime",       // Data e hora de criação
           "last_modified": "datetime", // Data e hora da última modificação
           "last_accessed": "datetime", // Data e hora do último acesso
-          "key": "encrypted_key",      // Chave simétrica AES encriptada com a chave privada RSA
+          "key": "encrypted_key",      // Chave simétrica AES encriptada com a chave pública RSA
                                          // do dono codificada em base64
           "acl": {
             "users": {                 // Partilhas diretas com outros utilizadores
@@ -68,7 +68,7 @@ se destacam:
         "<user_id>": {                 // ID do utilizador que efetuou a partilha
           "<file_id>": {               // ID do ficheiro a ser partilhado
             "permissions": "r",        // Permissões
-            "key": "encrypted_key"     // Chave simétrica AES encriptada com a chave privada RSA
+            "key": "encrypted_key"     // Chave simétrica AES encriptada com a chave pública RSA
                                          // do recepiente da partilha codificada em base64
           }
         }
@@ -84,7 +84,7 @@ se destacam:
         "<user_id>": {                 // ID do membro
           "permissions": "w",          // Permissões do membro no grupo
           "key": "encrypted_key"       // Chave (mestra) simétrica do grupo encriptada com a
-                                         // chave privada RSA do membro codificada em base64
+                                         // chave pública RSA do membro codificada em base64
         }
       },
       "files": {
@@ -95,7 +95,7 @@ se destacam:
 }
 ```
 
-## Notas
+### Notas
 
 1. **Identificadores Únicos**:
     - `user_id`: Nome de utilizador, único e imutável, obtido através do campo
