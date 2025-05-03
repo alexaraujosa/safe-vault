@@ -1,4 +1,4 @@
-# Encryption Plan
+# Plano de Encriptação de Ficheiros
 
 **TODO** adicionar nota sobre a reencriptação de chaves e conteúdos em revogações,
 explicar o processo em diferentes casos, e o porquê de não o termos feito
