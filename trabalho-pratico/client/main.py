@@ -13,7 +13,7 @@ from bson import BSON
 
 from common.keystore   import Keystore
 from common.validation import is_valid_file
-from common.packet     import read_fully, CommandType
+from common.packet     import read_fully, PacketType
 from client.encryption import RSA
 from client.handler    import process_command
 from client.usage      import _full as full_usage
@@ -130,16 +130,16 @@ def main():
                 user_id = extractSubjectId(client_cert)
                 if user_id:
                     match auth_packet.get("type"):
-                        case CommandType.AUTH_WELCOME.value:
+                        case PacketType.AUTH_WELCOME.value:
                             print(f"Welcome {user_id}")
-                        case CommandType.AUTH_WELCOME_BACK.value:
+                        case PacketType.AUTH_WELCOME_BACK.value:
                             print(f"Welcome back {user_id}")
-                        case CommandType.AUTH_USER_ALREADY_TOOK.value:
+                        case PacketType.AUTH_USER_ALREADY_TOOK.value:
                             print("Authentication failed!")
                             print(f"The user id '{user_id}' already exists.\n"
                                   "Regenerate the certificate with a different user id.")
                             sys.exit(1)
-                        case CommandType.AUTH_FAIL.value:
+                        case PacketType.AUTH_FAIL.value:
                             print(f"Invalid user id '{user_id}'.")
                             sys.exit(1)
                 else:

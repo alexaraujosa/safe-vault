@@ -8,7 +8,7 @@ from common.debug import G_DEBUG_PACKET_READ_FULLY
 PACKET_VERSION = 1
 
 
-class CommandType(Enum):
+class PacketType(Enum):
     SUCCESS                  = auto()
     ERROR                    = auto()
     NEED_CONFIRMATION        = auto()
@@ -54,23 +54,23 @@ def create_packet(p_type: int, payload: dict = {}) -> bytes:
 
 def create_success_packet(message: str = None) -> bytes:
     payload = {"message": message} if message else {}
-    return create_packet(CommandType.SUCCESS.value, payload)
+    return create_packet(PacketType.SUCCESS.value, payload)
 
 
 def create_error_packet(message: str) -> bytes:
-    return create_packet(CommandType.ERROR.value, {"message": message})
+    return create_packet(PacketType.ERROR.value, {"message": message})
 
 
 def create_need_confirmation_packet(message: str) -> bytes:
-    return create_packet(CommandType.NEED_CONFIRMATION.value, {"message": message})
+    return create_packet(PacketType.NEED_CONFIRMATION.value, {"message": message})
 
 
 def create_confirm_packet() -> bytes:
-    return create_packet(CommandType.CONFIRM.value, {})
+    return create_packet(PacketType.CONFIRM.value, {})
 
 
 def create_abort_packet() -> bytes:
-    return create_packet(CommandType.ABORT.value, {})
+    return create_packet(PacketType.ABORT.value, {})
 
 
 def decode_packet(packet_data: bytes) -> dict:
@@ -86,11 +86,11 @@ def decode_packet(packet_data: bytes) -> dict:
         raise ValueError("Invalid packet version.\n"
                          f"Expected '{PACKET_VERSION}', got '{packet.get('version')}'.")
 
-    # Verify command type
+    # Verify packet type
     try:
-        CommandType(packet.get("type"))
+        PacketType(packet.get("type"))
     except ValueError:
-        raise ValueError("Invalid packet command type.\n"
+        raise ValueError("Invalid packet type.\n"
                          f"Got: {packet.get('type')}")
 
     return packet

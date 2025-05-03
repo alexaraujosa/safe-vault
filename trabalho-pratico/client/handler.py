@@ -8,7 +8,7 @@ from client.encryption import RSA, AES_GCM
 from client.tabulate   import tabulate
 from common.validation import validate_params
 from common.packet import (
-    CommandType,
+    PacketType,
     create_packet,
     create_confirm_packet,
     create_abort_packet,
@@ -53,7 +53,7 @@ def handle_boolean_response(response: dict) -> bool:
     if message:
         print(message)
 
-    return response.get("type") == CommandType.SUCCESS.value
+    return response.get("type") == PacketType.SUCCESS.value
 
 
 def process_command(client_socket: socket,
@@ -84,7 +84,7 @@ def process_command(client_socket: socket,
             # Encrypt file master key with client public key
             enc_file_key = RSA.encrypt(file_key, client_public_key)
 
-            packet = create_packet(CommandType.ADD.value,
+            packet = create_packet(PacketType.ADD.value,
                                    {"content": enc_content,
                                     "key": enc_file_key,
                                     "size": len(content),
@@ -99,16 +99,16 @@ def process_command(client_socket: socket,
             rest = args[1:]
             match rest:
                 case []:  # list
-                    packet = create_packet(CommandType.LIST.value, {})
+                    packet = create_packet(PacketType.LIST.value, {})
 
                 case ["-u", user_id]:  # list -u <user_id>
                     validate_params(user_id=user_id)
-                    packet = create_packet(CommandType.LIST.value,
+                    packet = create_packet(PacketType.LIST.value,
                                            {"user_id": user_id})
 
                 case ["-g", group_id]:  # list -g <group_id>
                     validate_params(group_id=group_id)
-                    packet = create_packet(CommandType.LIST.value,
+                    packet = create_packet(PacketType.LIST.value,
                                            {"group_id": group_id})
 
                 case _:
@@ -119,7 +119,7 @@ def process_command(client_socket: socket,
             # Await server response
             response = receive_packet(server_socket)
             payload = response.get("payload")
-            if response.get("type") == CommandType.ERROR.value:
+            if response.get("type") == PacketType.ERROR.value:
                 print(payload.get("message"))
                 return
 
@@ -149,7 +149,7 @@ def process_command(client_socket: socket,
                             user_id=(user_id := args[2]),
                             permissions=(permissions := args[3]))
 
-            packet = create_packet(CommandType.SHARE.value,
+            packet = create_packet(PacketType.SHARE.value,
                                    {"file_id": file_id,
                                     "user_id": user_id,
                                     "permissions": permissions})
@@ -158,7 +158,7 @@ def process_command(client_socket: socket,
             # Await server response
             response = receive_packet(server_socket)
             payload  = response.get("payload")
-            if response.get("type") == CommandType.ERROR.value:
+            if response.get("type") == PacketType.ERROR.value:
                 print(payload.get("message"))
                 return
 
@@ -173,7 +173,7 @@ def process_command(client_socket: socket,
             share_user_file_symmetric_key_enc = RSA.encrypt(file_symmetric_key, user_pub_key)
 
             # Send share user file symmetric key to server
-            packet_share = create_packet(CommandType.SHARE.value,
+            packet_share = create_packet(PacketType.SHARE.value,
                                          {"key": share_user_file_symmetric_key_enc})
             server_socket.send(packet_share)
 
@@ -186,7 +186,7 @@ def process_command(client_socket: socket,
                 raise ValueError(f"Invalid arguments.\nUsage: {usage._delete}")
             validate_params(file_id=(file_id := args[1]))
 
-            packet = create_packet(CommandType.DELETE.value,
+            packet = create_packet(PacketType.DELETE.value,
                                    {"file_id": file_id})
             server_socket.send(packet)
 
@@ -203,14 +203,14 @@ def process_command(client_socket: socket,
             filename = os.path.basename(file_path)
             new_content = read_file(file_path)
 
-            packet = create_packet(CommandType.REPLACE.value,
+            packet = create_packet(PacketType.REPLACE.value,
                                    {"file_id": file_id})
             server_socket.send(packet)
 
             # Await server response
             response = receive_packet(server_socket)
             payload  = response.get("payload")
-            if response.get("type") == CommandType.ERROR.value:
+            if response.get("type") == PacketType.ERROR.value:
                 print(payload.get("message"))
                 return
 
@@ -221,7 +221,7 @@ def process_command(client_socket: socket,
 
             # Encrypt new file contents
             enc_content = AES_GCM.encrypt(new_content, file_symmetric_key)
-            packet_replace = create_packet(CommandType.REPLACE.value,
+            packet_replace = create_packet(PacketType.REPLACE.value,
                                            {"content": BSON.encode(enc_content),  # TODO check if BSON is needed here
                                             "size": len(new_content)})
             server_socket.send(packet_replace)
@@ -235,14 +235,14 @@ def process_command(client_socket: socket,
                 raise ValueError(f"Invalid arguments.\nUsage: {usage._details}")
             validate_params(file_id=(file_id := args[1]))
 
-            packet = create_packet(CommandType.DETAILS_REQUEST.value,
+            packet = create_packet(PacketType.DETAILS_REQUEST.value,
                                    {"file_id": file_id})
             server_socket.send(packet)
 
             # Await server response
             response = receive_packet(server_socket)
             payload = response.get("payload")
-            if response.get("type") == CommandType.ERROR.value:
+            if response.get("type") == PacketType.ERROR.value:
                 print(payload.get("message"))
                 return
 
@@ -274,7 +274,7 @@ def process_command(client_socket: socket,
             validate_params(file_id=(file_id := args[1]),
                             user_id=(user_id := args[2]))
 
-            packet = create_packet(CommandType.REVOKE_REQUEST.value,
+            packet = create_packet(PacketType.REVOKE_REQUEST.value,
                                    {"file_id": file_id, "user_id": user_id})
             server_socket.send(packet)
 
@@ -287,14 +287,14 @@ def process_command(client_socket: socket,
                 raise ValueError(f"Invalid arguments.\nUsage: {usage._read}")
             validate_params(file_id=(file_id := args[1]))
 
-            packet = create_packet(CommandType.READ.value,
+            packet = create_packet(PacketType.READ.value,
                                    {"file_id": file_id})
             server_socket.send(packet)
 
             # Await server response
             response = receive_packet(server_socket)
             payload = response.get("payload")
-            if response.get("type") == CommandType.ERROR.value:
+            if response.get("type") == PacketType.ERROR.value:
                 print(payload.get("message"))
                 return
 
@@ -328,7 +328,7 @@ def process_command(client_socket: socket,
                     group_key = RSA.encrypt(group_key, client_public_key)
 
                     # Send group creation request to server
-                    packet = create_packet(CommandType.GROUP_CREATE.value,
+                    packet = create_packet(PacketType.GROUP_CREATE.value,
                                            {"name": group_id,
                                             "key": group_key})
                     server_socket.send(packet)
@@ -343,7 +343,7 @@ def process_command(client_socket: socket,
                     validate_params(group_id=(group_id := args[2]))
 
                     # Send group deletion request to server
-                    packet = create_packet(CommandType.GROUP_DELETE.value,
+                    packet = create_packet(PacketType.GROUP_DELETE.value,
                                            {"id": group_id})
                     server_socket.send(packet)
 
@@ -359,7 +359,7 @@ def process_command(client_socket: socket,
                                     permissions=(permissions := args[4]))
 
                     # Request master group and user public keys from server (server can deny)
-                    packet = create_packet(CommandType.GROUP_ADD_USER_INIT.value,
+                    packet = create_packet(PacketType.GROUP_ADD_USER_INIT.value,
                                            {"group_id": group_id,
                                             "user_id": user_id})
                     server_socket.send(packet)
@@ -367,7 +367,7 @@ def process_command(client_socket: socket,
                     # Await server response (GROUP_ADD_USER_INIT | ERROR)
                     response = receive_packet(server_socket)
                     payload  = response.get("payload")
-                    if response.get("type") == CommandType.ERROR.value:
+                    if response.get("type") == PacketType.ERROR.value:
                         print(payload.get("message"))
                         return
 
@@ -381,7 +381,7 @@ def process_command(client_socket: socket,
                     encrypted_group_key = RSA.encrypt(group_key, public_key)
 
                     # Send the encrypted master group public key to the server
-                    packet = create_packet(CommandType.GROUP_ADD_USER.value,
+                    packet = create_packet(PacketType.GROUP_ADD_USER.value,
                                            {"group_id": group_id,
                                             "user_id": user_id,
                                             "permissions": permissions,
@@ -399,7 +399,7 @@ def process_command(client_socket: socket,
                                     user_id=(user_id := args[3]))
 
                     # Send user group deletion request to server
-                    packet = create_packet(CommandType.GROUP_DELETE_USER.value,
+                    packet = create_packet(PacketType.GROUP_DELETE_USER.value,
                                            {"id": group_id,
                                             "user_id": user_id,
                                             "confirm": False})
@@ -408,7 +408,7 @@ def process_command(client_socket: socket,
                     # Await server response (NEED_CONFIRMATION | SUCCESS | ERROR)
                     response = receive_packet(server_socket)
 
-                    if response.get("type") == CommandType.NEED_CONFIRMATION.value:
+                    if response.get("type") == PacketType.NEED_CONFIRMATION.value:
                         print(response.get("payload").get("message"))
                         confirm = input("Do you want to continue? [y/N] ")
                         if confirm.lower() != "y":
@@ -424,7 +424,7 @@ def process_command(client_socket: socket,
                         raise ValueError(f"Invalid arguments.\nUsage: {usage._group_list}")
 
                     # Send group list request to server
-                    packet = create_packet(CommandType.GROUP_LIST.value, {})
+                    packet = create_packet(PacketType.GROUP_LIST.value, {})
                     server_socket.send(packet)
 
                     # Await server response (SUCCESS | ERROR)
@@ -441,7 +441,7 @@ def process_command(client_socket: socket,
                     content = read_file(file_path)
 
                     # Send group master key from current user request to server
-                    packet = create_packet(CommandType.GROUP_ADD_INIT.value,
+                    packet = create_packet(PacketType.GROUP_ADD_INIT.value,
                                            {"group_id": group_id,
                                             "filename": filename,
                                             "size": len(content)})
@@ -450,7 +450,7 @@ def process_command(client_socket: socket,
                     # Retrieve group master key from server (GROUP_ADD_INIT | ERROR)
                     response = receive_packet(server_socket)
                     payload  = response.get("payload")
-                    if response.get("type") == CommandType.ERROR.value:
+                    if response.get("type") == PacketType.ERROR.value:
                         print(payload.get("message"))
                         return
 
@@ -463,7 +463,7 @@ def process_command(client_socket: socket,
                     enc_content = BSON.encode(AES_GCM.encrypt(content, dec_group_key))
 
                     # Send add file to group request to server
-                    packet = create_packet(CommandType.GROUP_ADD.value,
+                    packet = create_packet(PacketType.GROUP_ADD.value,
                                            {"group_id": group_id,
                                             "content": enc_content,
                                             "filename": filename,
@@ -482,7 +482,7 @@ def process_command(client_socket: socket,
                                     file_id=(file_id := args[3]))
 
                     # Send group file deletion request to server
-                    packet = create_packet(CommandType.GROUP_DELETE_FILE.value,
+                    packet = create_packet(PacketType.GROUP_DELETE_FILE.value,
                                            {"group_id": group_id,
                                             "file_id": file_id})
                     server_socket.send(packet)
@@ -499,7 +499,7 @@ def process_command(client_socket: socket,
                                     permissions=(permissions := args[4]))
 
                     # Send group file deletion request to server
-                    packet = create_packet(CommandType.GROUP_CHANGE_PERMISSIONS.value,
+                    packet = create_packet(PacketType.GROUP_CHANGE_PERMISSIONS.value,
                                            {"group_id": group_id,
                                             "user_id": user_id,
                                             "permissions": permissions})
@@ -516,7 +516,7 @@ def process_command(client_socket: socket,
                                     user_id=(user_id := args[3]))
 
                     # Send user id to be promoted to the server
-                    packet = create_packet(CommandType.GROUP_ADD_MODERATOR.value,
+                    packet = create_packet(PacketType.GROUP_ADD_MODERATOR.value,
                                            {"group_id": group_id,
                                             "user_id": user_id})
                     server_socket.send(packet)
@@ -524,7 +524,7 @@ def process_command(client_socket: socket,
                     # Await server response (GROUP_ADD_MODERATOR | ERROR)
                     response = receive_packet(server_socket)
                     payload = response.get("payload")
-                    if response.get("type") == CommandType.ERROR.value:
+                    if response.get("type") == PacketType.ERROR.value:
                         print(payload.get("message"))
                         return
 
@@ -538,7 +538,7 @@ def process_command(client_socket: socket,
                     # Encrypt the group master key with the moderator public key
                     group_key_enc = RSA.encrypt(group_key_dec, user_pub_key)
 
-                    packet_add_moderator = create_packet(CommandType.GROUP_ADD_MODERATOR.value,
+                    packet_add_moderator = create_packet(PacketType.GROUP_ADD_MODERATOR.value,
                                                          {"key": group_key_enc})
                     server_socket.send(packet_add_moderator)
 
@@ -553,7 +553,7 @@ def process_command(client_socket: socket,
                                     user_id=(user_id := args[3]))
 
                     # Send user id to be promoted to server
-                    packet = create_packet(CommandType.GROUP_REMOVE_MODERATOR.value,
+                    packet = create_packet(PacketType.GROUP_REMOVE_MODERATOR.value,
                                            {"group_id": group_id,
                                             "moderator_id": user_id})
                     server_socket.send(packet)
@@ -573,13 +573,13 @@ def process_command(client_socket: socket,
                 case "global":
                     if len(args) == 2:
                         # Send user id to the server
-                        packet = create_packet(CommandType.LOGS_GLOBAL.value)
+                        packet = create_packet(PacketType.LOGS_GLOBAL.value)
                         server_socket.send(packet)
 
                         # Await server response (LOGS_GLOBAL | ERROR)
                         response = receive_packet(server_socket)
                         payload  = response.get("payload")
-                        if response.get("type") == CommandType.ERROR.value:
+                        if response.get("type") == PacketType.ERROR.value:
                             print(payload.get("message"))
                             return
 
@@ -591,14 +591,14 @@ def process_command(client_socket: socket,
                         validate_params(group_id=(group_id := args[3]))
 
                         # Send group id to the server
-                        packet = create_packet(CommandType.LOGS_GROUP_OWNER.value,
+                        packet = create_packet(PacketType.LOGS_GROUP_OWNER.value,
                                                {"group_id": group_id})
                         server_socket.send(packet)
 
                         # Await server response (LOGS_GROUP_OWNER | ERROR)
                         response = receive_packet(server_socket)
                         payload  = response.get("payload")
-                        if response.get("type") == CommandType.ERROR.value:
+                        if response.get("type") == PacketType.ERROR.value:
                             print(payload.get("message"))
                             return
 
@@ -613,14 +613,14 @@ def process_command(client_socket: socket,
                     validate_params(file_id=(file_id := args[2]))
 
                     # Send file id to the server
-                    packet = create_packet(CommandType.LOGS_FILE.value,
+                    packet = create_packet(PacketType.LOGS_FILE.value,
                                            {"file_id": file_id})
                     server_socket.send(packet)
 
                     # Await server response (LOGS_FILE | ERROR)
                     response = receive_packet(server_socket)
                     payload  = response.get("payload")
-                    if response.get("type") == CommandType.ERROR.value:
+                    if response.get("type") == PacketType.ERROR.value:
                         print(payload.get("message"))
                         return
 
@@ -633,14 +633,14 @@ def process_command(client_socket: socket,
                     validate_params(group_id=(group_id := args[2]))
 
                     # Send group id to the server
-                    packet = create_packet(CommandType.LOGS_GROUP.value,
+                    packet = create_packet(PacketType.LOGS_GROUP.value,
                                            {"group_id": group_id})
                     server_socket.send(packet)
 
                     # Await server response (LOGS_GROUP | ERROR)
                     response = receive_packet(server_socket)
                     payload  = response.get("payload")
-                    if response.get("type") == CommandType.ERROR.value:
+                    if response.get("type") == PacketType.ERROR.value:
                         print(payload.get("message"))
                         return
 

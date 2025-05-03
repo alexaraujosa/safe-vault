@@ -13,7 +13,7 @@ from cryptography.hazmat.primitives import serialization
 from common.exceptions import UserExists
 from common.keystore   import Keystore
 from common.validation import is_valid_file
-from common.packet     import read_fully, create_packet, decode_packet, CommandType
+from common.packet     import read_fully, create_packet, decode_packet, PacketType
 from server.config     import Config
 from server.operations import Operations
 from server.handler    import process_request
@@ -74,23 +74,23 @@ def handleClient(operations, conn: ssl.SSLSocket, addr, config, process_lock):
             print(f"✅ User {user_id} account created.")
 
             # Send welcome packet
-            conn.send(create_packet(CommandType.AUTH_WELCOME.value))
+            conn.send(create_packet(PacketType.AUTH_WELCOME.value))
         except UserExists:
             with process_lock:
                 config_client_public_key = base64.b64decode(config.config["users"][user_id]["public_key"])
             if config_client_public_key == public_key:
                 # Send welcome back packet
-                conn.send(create_packet(CommandType.AUTH_WELCOME_BACK.value))
+                conn.send(create_packet(PacketType.AUTH_WELCOME_BACK.value))
                 operations.logs.add_user_entry(user_id, "authenticate user", True, executor_id="system")
                 print(f"✅ User {user_id} authenticated.")
             else:
                 # Send user id already took packet
-                conn.send(create_packet(CommandType.AUTH_USER_ALREADY_TOOK.value))
+                conn.send(create_packet(PacketType.AUTH_USER_ALREADY_TOOK.value))
                 operations.logs.add_user_entry(user_id, "authenticate user", False, executor_id="system")
                 print(f"❌ Attempt to authenticate as {user_id}, but detected different public key!")
 
         except ValueError:
-            conn.send(create_packet(CommandType.AUTH_FAIL.value))
+            conn.send(create_packet(PacketType.AUTH_FAIL.value))
             print(f"🚧 Invalid user ID: {user_id}.")
             exit(1)
 
@@ -116,7 +116,7 @@ def handleClient(operations, conn: ssl.SSLSocket, addr, config, process_lock):
                     packet = decode_packet(packet_data)
                 except ValueError as e:
                     print(f"❌ Malformed packet detected from {addr}: {e}")
-                    conn.send(create_packet(CommandType.ERROR.value, {"message": str(e)}))
+                    conn.send(create_packet(PacketType.ERROR.value, {"message": str(e)}))
                     continue
 
                 # Process the request
