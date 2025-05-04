@@ -390,9 +390,18 @@ TODO
 ## Trabalho futuro
 
 TODO
-- Encriptação com Curvas Elípticas por uma maior força criptográfica em relação ao tamanho da chave.
 - Próprio formato do sistema de logs, em vez de guardar em ficheiros json
-- File enumeration
+
+A equipa de trabalho teve em consideração o uso de encriptação com curvas elípticas,
+uma vez que estas oferecem um nível de segurança superior a RSA para o mesmo tamanho
+de chave. Contudo, após uma análise cuidadosa, a equipa decidiu não implementar,
+na presente data, devido ao trabalho computacional acrescido dos clientes,
+a relativa novidade deste método de encriptação na indústria e a segurança provada
+do RSA para o tamanho de chave definido no projeto. Contudo, no futuro, caso fosse
+uma melhoria viável do sistema, apenas seria necessário alterar a biblioteca de
+encriptação usada pelo cliente, mais especificamente a classe responsável pela
+encriptação assimétrica implementada e a atualização do modulo responsável pela
+criação de certificados e *keystores*, com a nova geração de chaves.
 
 No âmbito adicional aos conteúdos programáticos da Unidade Curricular de Segurança
 de Sistemas de Informação, a equipa de trabalho poderá desenvolver um servidor com
