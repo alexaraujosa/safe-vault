@@ -74,16 +74,36 @@ TODO
 ## Trabalho futuro
 
 - Encriptação com Curvas Elípticas por uma maior força criptográfica em relação ao tamanho da chave.
-- Concorrência nas operações do servidor, permitindo vários cliente enviar vários pedidos ao mesmo tempo
 - Próprio formato do sistema de logs, em vez de guardar em ficheiros json
 TODO
+
+No âmbito adicional aos conteúdos programáticos da Unidade Curricular de Segurança
+de Sistemas de Informação, a equipa de trabalho poderá desenvolver um servidor com
+concorrência, permitindo que vários clientes interajam com o serviço de cofre seguro
+em simultâneo. Para tal implementação, a equipa de trabalho poderá utilizar uma *thread*
+por pedido, ou então um *thread pool*, permitindo que o servidor tenha um número
+fixo de *threads* disponíveis para atender os pedidos dos clientes. Esta implementação
+precisaria de considerar a sincronização de dados entre as várias *threads*, sendo
+assim necessário o uso de um *lock* global para os metadados do servidor, podendo
+ser um *read-write lock* dependendo da frequência de leitura e escrita nos metadados
+consoante os pedidos dos clientes. Para além disso, é necessário a implementação
+de um *lock* por cada ficheiro no cofre seguro, de forma a evitar situações adversas
+como, por exemplo, um cliente ler um ficheiro enquanto outro cliente o está a escrever.
+Deste modo, seria implementada uma estrutura de dados para os *locks* de cada ficheiro,
+podendo esta ser preguiçosa, ou seja, só criar o *lock* quando o ficheiro é acedido pela
+primeira vez. Para além disso, a equipa de trabalho poderá implementar um sistema
+de *caching* para os conteúdos encriptados dos ficheiros, de forma a evitar o acesso
+repetido ao disco, melhorando assim o desempenho do servidor.
 
 ## Possíveis valorizações
 
 - Lista com todas as valorizações que foram implementadas e detalhadas no relatório
-- Atomic writes (server/operations)
-- Path traversal (server/operations)
-- File enumeration (server/operations)
+- Atomic writes
+- Path traversal
+- File enumeration
+- Validação de parâmetros tanto no cliente (para evitar sobrecarga no *server*) como no *server*
+- OOM protection (*validate max size*) (zero-trust)
+
 TODO
 
 ## Conclusão
