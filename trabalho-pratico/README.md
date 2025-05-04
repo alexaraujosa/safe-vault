@@ -462,7 +462,10 @@ do sistema, das quais se destacam:
 - **Validação de certificados**: O servidor valida os certificados dos clientes
     e vice-versa, garantindo que apenas clientes autorizados podem aceder ao serviço,
     bem como são verificadas as assinaturas digitais dos certificados, e respetivas
-    datas de validade.
+    datas de validade. No âmbito da testagem desta funcionalidade e exemplificação
+    da usagem do módulo de [Utilidades de Certificados](common/certutil.py) desenvolvido,
+    a equipa de trabalho produziu um *shell script*, em *bash*, que pode ser
+    localizado em [scripts/gen_certs.sh](scripts/gen_certs.sh).
 - **Validação de parâmetros**: Todos os parâmetros trocados entre o cliente e o servidor
     são validados, tanto no cliente com o intuito de evitar sobrecarga desnecessária
     no servidor, como no servidor para evitar os seguintes ataques:
