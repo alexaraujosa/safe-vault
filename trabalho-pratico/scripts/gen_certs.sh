@@ -24,11 +24,11 @@ mkdir -p $CERTS_DIR
 mkdir -p $KEYSTORES_DIR
 
 # Generate the server CA certificate (self-signed)
-python3 server/certutil.py genca \
+python3 common/certutil.py genca \
     --out-dir $CERTS_DIR
 
 # Generate the server signed certificate and PKCS12 keystore
-python3 server/certutil.py genstore \
+python3 common/certutil.py genstore \
     --out-dir $KEYSTORES_DIR \
     --common-name 'SSI Vault Server' \
     --id 'VAULT_SERVER' \
@@ -37,7 +37,7 @@ python3 server/certutil.py genstore \
 
 # Generate the clients signed certificates and PKCS12 keystores
 for CLIENT in "${CLIENTS[@]}"; do
-    python3 server/certutil.py genstore \
+    python3 common/certutil.py genstore \
         --out-dir $KEYSTORES_DIR \
         --common-name "SSI Vault Client" \
         --id "$CLIENT" \
@@ -46,12 +46,12 @@ for CLIENT in "${CLIENTS[@]}"; do
 done
 
 # Generate the invalid server CA certificate (for testing)
-python3 server/certutil.py genca \
+python3 common/certutil.py genca \
     --out-dir $CERTS_DIR \
     --id 'INVALID_VAULT_CA'
 
 # Generate the invalid client PKCS12 keystore (for testing)
-python3 server/certutil.py genstore \
+python3 common/certutil.py genstore \
     --out-dir $KEYSTORES_DIR \
     --common-name 'SSI Vault Client' \
     --id 'userInvalidCA' \
@@ -59,7 +59,7 @@ python3 server/certutil.py genstore \
     --ca-key=$CERTS_DIR/INVALID_VAULT_CA.pem
 
 # Generate the outdated client PKCS12 keystore (for testing)
-python3 server/certutil.py genstore \
+python3 common/certutil.py genstore \
     --out-dir $KEYSTORES_DIR \
     --common-name 'SSI Vault Client' \
     --id 'userOutdated' \

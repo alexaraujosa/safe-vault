@@ -129,7 +129,7 @@ identificação.
 
 As *keystores* são ficheiros no formato `PKCS12` que contém uma chave privada assimétrica, um certificado associado à
 chave publica, par da chave privada anterior, e o certificado da Entidade de Certificação `VAULT_CA`. As *keystores* são
-geradas com recurso ao módulo `certutil`, localizado em `server/certutil.py`. Cada *keystore* contém os dados necessários
+geradas com recurso ao módulo `certutil`, localizado em `common/certutil.py`. Cada *keystore* contém os dados necessários
 para identificar unicamente uma entidade, pelo que deve em teoria ser mantido privado a qualquer momento. Por limitações
 inerentes ao módulo `ssl`, os conteúdos da *keystore*, nomeadamente o certificado e a chave privada têm que ser gravados
 no disco e passados como `filepath` ao contexto SSL, pelo que se faz uso do módulo *built-in* do python `tempfile` para
