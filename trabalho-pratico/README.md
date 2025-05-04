@@ -73,9 +73,10 @@ TODO
 
 ## Trabalho futuro
 
+TODO
 - Encriptação com Curvas Elípticas por uma maior força criptográfica em relação ao tamanho da chave.
 - Próprio formato do sistema de logs, em vez de guardar em ficheiros json
-TODO
+- File enumeration
 
 No âmbito adicional aos conteúdos programáticos da Unidade Curricular de Segurança
 de Sistemas de Informação, a equipa de trabalho poderá desenvolver um servidor com
@@ -100,11 +101,8 @@ repetido ao disco, melhorando assim o desempenho do servidor.
 - Lista com todas as valorizações que foram implementadas e detalhadas no relatório
 - Atomic writes
 - Path traversal
-- File enumeration
 - Validação de parâmetros tanto no cliente (para evitar sobrecarga no *server*) como no *server*
 - OOM protection (*validate max size*) (zero-trust)
-
-TODO
 
 ## Conclusão
 
