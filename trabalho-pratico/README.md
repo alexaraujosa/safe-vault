@@ -12,7 +12,7 @@ TODO
 - Referir o estilo de servidor (semelhante a zero-trust)
 TODO
 
-## Comunicação entre cliente e servidor
+## Comunicação entre Cliente e Servidor
 
 - Utilização do módulo SSL
 - Wrapper em volta do socket
@@ -22,7 +22,7 @@ TODO
 - Comunicação sequencial (1 thread por cliente)
 TODO
 
-## Autenticação de clientes e servidor
+## Autenticação de Clientes e Servidor
 
 - Context do módulo SSL (referindo pormenorizadamente sobre os certificados)
 - Validação de certificados (campos)
@@ -355,7 +355,7 @@ aquando da execução de diferentes comandos do cliente, bem como abordar-se-á
 o conceito introduzido de moderador de um grupo e comandos adicionais para além
 dos requisitos inicialmente providenciados.
 
-## Execução de comandos
+## Execução de Comandos
 
 A aplicação do cliente implementa uma diversidade de comandos que permitem aos utilizadores interagirem
 com o serviço de cofre seguro. Estes comandos em conjunto com o sistema de gestão criado levam à 
@@ -381,13 +381,13 @@ e o dono do ficheiro pode apagar o ficheiro apenas no grupo, ou entao depois apa
 - Imagens com pacotes capturados pelo sniffer, mostrando o conteudo encriptado e desencriptado
 TODO
 
-## Sistema de log
+## Sistema de *Logging*
 
 - Referir o tipo de logs implementado
 - Formato do ficheiro que contem a informação (similar à config na primeira layer "user"/"groups")
 TODO
 
-## Trabalho futuro
+## Trabalho Futuro
 
 TODO
 - Próprio formato do sistema de logs, em vez de guardar em ficheiros json
@@ -421,7 +421,7 @@ primeira vez. Para além disso, a equipa de trabalho poderá implementar um sist
 de *caching* para os conteúdos encriptados dos ficheiros, de forma a evitar o acesso
 repetido ao disco, melhorando assim o desempenho do servidor.
 
-## Possíveis valorizações
+## Possíveis Valorizações
 
 A equipa de trabalho tomou as devidas precauções para garantir uma segurança acrescida
 do sistema, das quais se destacam:
