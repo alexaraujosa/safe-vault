@@ -586,13 +586,75 @@ dos requisitos inicialmente providenciados.
 A aplicação do cliente implementa uma diversidade de comandos que permitem aos utilizadores interagirem
 com o serviço de cofre seguro. Estes comandos em conjunto com o sistema de gestão criado levam à 
 cobertura de todas as funcionalidades descritas no enunciado, nomeadamente, a manipulação de ficheiros e 
-a gestão de grupos. Para além desta base, a equipa de trabalho acrescentou comandos que permitem uma maior
-composição a nível dos grupos através da criação de uma nova entidade, os moderadores, que possuem, para
+a gestão de utilizadores e grupos. Para além desta base, a equipa de trabalho acrescentou comandos que permitem uma 
+maior composição a nível dos grupos através da criação de uma nova entidade, os moderadores, que possuem, para
 além da permissão de escrita em ficheiros do grupo, a possibilidade de adicionarem e removerem novos membros
-aos grupos, refletindo um maior poder administrativo nesta componente do serviço, mesmo quando o dono do grupo 
-não está disponível. Por outro lado, o desenvolvimento de um sistema de _log_ persistente, tal como será
-detalhado posteriormente, levou à necessidade de serem criados mais comandos, possibilitando a consulta
-dessas mesmas _logs_, de forma global ou seletiva por parte dos clientes.
+aos grupos, bem como modificar as permissões de um membro, refletindo um maior poder administrativo nesta
+componente do serviço, mesmo quando o dono do grupo não está disponível. Por outro lado, o desenvolvimento 
+de um sistema de _log_ persistente, tal como será detalhado posteriormente, levou à necessidade de serem criados 
+mais comandos, possibilitando a consulta dessas mesmas _logs_, de forma global ou seletiva por parte dos clientes.  
+
+---
+De forma a organizar e clarificar os comandos, estes foram agrupados por categorias conforme apresentado de seguida:  
+
+### Comandos sobre ficheiros
+
+- `add <file-path>`
+- `delete <file-id>`
+- `replace <file-id> <file-path>`
+- `details <file-id>`
+- `read <file-id>`
+- `list [-o | -u <user-id> | -g <group-id>]`
+
+### Comandos sobre utilizadores
+
+- `share <file-id> <user-id> <permissions>`
+- `revoke <file-id> <user-id>`
+
+### Comandos sobre grupos
+
+- `group create <group-name>`
+- `group delete <group-id>`
+- `group add-user <group-id> <user-id> <permissions>`
+- `group delete-user <group-id> <user-id>`
+- `group list`
+- `group add <group-id> <file-path>`
+- `group delete-file <group-id> <file-id>`
+- `group change-permissions <group-id> <user-id> <permissions>`
+- `group add-moderator <group-id> <user-id>`
+- `group remove-moderator <group-id> <user-id>`
+
+### Comandos sobre _logs_
+
+- `logs global [-g group_id]`
+- `logs file <file-id>`
+- `logs group <group-id>`
+
+### Comandos gerais
+
+- `whoami`
+- `help`
+- `exit`
+
+---
+
+Dos comandos listados, a equipa de trabalho teve como iniciativa a alteração da forma de apagar ficheiros
+do cofre, já que, anteriormente, o dono de um grupo poderia remover um ficheiro do cofre do grupo, refletindo
+na remoção desse ficheiro por completo do sistema. Este comportamento reflete um funcionamento inadequado para
+a gestão dos ficheiros, já que o dono do ficheiro poderia ter partilhado esse mesmo ficheiro com um utilizador
+externo ao grupo, levando a que uma entidade externa a essa partilha tenha controlo sobre a mesma. Dessa forma,
+a equipa adicionou o comando `group delete-file`, que permite apagar o ficheiro do cofre do grupo, permanecendo
+no cofre do dono do ficheiro, evitando essa dependência de controlo. Eventualmente, caso o dono do ficheiro o
+queira remover totalmente do sistema, invocaria o comando `delete`.  
+
+Para alem da alteração referida, a equipa também modificou o comportamento do comando `list`, uma vez que
+os clientes não conseguiam ter uma perceção clara de que ficheiros têm acesso como partilha, já que estes
+precisariam do identificador do utilizador que os partilhou para conseguir listar os ficheiros. Desta forma,
+a listagem dos ficheiros do cofre seguro pessoal passou a ser efetuada com a invocação do comando `list` com
+a _flag_ `-o`. Por outro lado, a execução desse comando sem nenhum _flag_ leva à listagem de todos os ficheiros
+ao qual o utilizador tem acesso.
+
+Relativamente às permissões dos membros dos grupos, FALAR DO CHANGE-PERMISSIONS e que os moderadores os podem invocar para alem do dono do grupo, como dito anteriormente
 
 TODO agrupar os comandos por categoria e listá-los
 TODO falar sobre os comandos adicionais implementados, bem como a nova opcao do list e o delete group file,
@@ -609,9 +671,43 @@ TODO
 
 ## Sistema de *Logging*
 
-- Referir o tipo de logs implementado
-- Formato do ficheiro que contem a informação (similar à config na primeira layer "user"/"groups")
-TODO
+Com o objetivo de proporcionar uma melhor perceção dos comandos executados aos 
+clientes, a equipa de trabalho implementou no serviço um sistema de registos
+persistente. Numa primeira fase de planeamento, foi ponderada a criação de um
+formato de ficheiro próprio, de forma a manter a reduzir a utilização de memória.
+Contudo, devido à limitação de tempo, a equipa optou por utilizar um ficheiro JSON
+com um formato similar ao ficheiro de _metadata_. Apesar do formato utilizado não
+ser o mais propício guardar os registos, uma vez que para obter as _logs_ de um
+cliente será necessário carregar o ficheiro todo, já que o JSON não permite o
+carregamento parcial, permitiu à equipa de trabalho implementar uma variedade de
+filtros ao listar os registos dos comandos executados ao longo de todas as sessões. 
+Assim sendo, um cliente consegue visualizar todos os comandos que invocou, bem como
+os comandos que executou referentes a um determinado ficheiro ou grupo. Por outro
+lado, a equipa decidiu, mais uma vez, proporcionar uma maior vertente administrativa
+nos grupos, permitindo que um dono possa visualizar todos os comandos executados
+pelos membros e moderadores que envolvam o grupo, proporcionando, como exemplo,
+uma visão que permite saber quais os membros mais ativos e contribuidores.
+De maneira a suportar todas as funcionalidades descritas, o ficheiro JSON possui,
+para cada utilizador e grupo, uma lista composta por objetos que representam os
+registos, contendo os seguintes campos:
+
+- executor `identificador do utilizador que invocou o comando`
+- time `instante em que o comando foi invocado`
+- success `resultado da invocação do comando (sucesso ou falha)`
+- command `comando invocado`
+
+Adicionalmente, um registo poderá ter dois campos opcionais referentes aos
+identificadores de um ficheiro ou grupo, permitindo ao serviço filtrar os registos
+relacionados com um ficheiro ou grupo específico. Relativamente à adição de _logs_,
+um novo registo é adicionado sempre que a operação correspondente ao comando tiver
+sido executada, ou seja, no final do processamento de um pacote enviado pelo cliente.
+Por fim, certos comandos, como o _share_ e _revoke_, que envolvem múltiplos utilizadores,
+requerem um tratamento especial. Nestes casos, o mesmo registo é adicionados aos
+clientes envolvidos, garantindo a consistência entre os registos visualizados por 
+cada cliente e o estado real do cofre seguro. Isto evita, por exemplo, situações
+em que a substituição do conteúdo de um ficheiro não seja refletida nas _logs_ de
+um utilizador com acesso ao mesmo, levando-o a pensar, incorretamente, que o ficheiro
+não foi alterado.
 
 ## Trabalho Futuro
 
