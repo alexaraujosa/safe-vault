@@ -76,11 +76,56 @@ do serviço.
 
 ## Arquitetura do Serviço
 
-- Imagem descritiva
-- Argumentos passados para cada programa
-- Módulos do serviço
-- Referir o estilo de servidor (semelhante a zero-trust)
-TODO
+O serviço de cofre seguro é composto por uma instância central, o servidor, que 
+atende os pedidos enviados pelos clientes, refletindo-se numa arquitetura
+servidor-cliente. Dada a necessidade do servidor não poder, em qualquer instante,
+aceder ao conteúdo original de um ficheiro, este segue um comportamento semelhante
+a um servidor _zero-trust_, deferindo, apenas, na vertente de acesso aos ficheiros
+armazenados no cofre, que deverá ser confiada pelos seus clientes. De tal forma,
+um dos requisitos implícitos no serviço é a realização de todos os processos
+criptográficos, que envolvam um ficheiro, no lado do cliente, apenas existindo
+encriptação de ambos os lados nas trocas de mensagens no canal de comunicação,
+refletindo-se no envio de conteúdos encriptografados para o servidor, assim como
+as próprias chaves simétricas encriptografadas de maneira a que, o servidor, não
+consiga desencriptar o conteúdo com essas mesmas chaves.
+
+Tanto o cliente como o servidor recebem, opcionalmente, argumentos aquando da sua
+execução, definindo o seu comportamento. Ambas as soluções necessitam de receber
+o certificado referente à entidade de certificação que gerou os certificados a
+serem utilizados, de maneira a que seja possível os validar, bem como o caminho
+para o seu próprio ficheiro _.p12_ que corresponde à _keystore_ que contem o
+certificado a ser utilizado e a chave privada. De maneira mais restrita, o servidor
+pode receber os caminhos para os ficheiros de metadados e registos, restaurando
+o seu estado, o caminho para armazenar em ficheiros binários o conteúdo dos 
+ficheiros enviados pelos clientes e, por fim, o número da porta a ser utilizado
+no _socket_ TCP. Por outro lado, o cliente pode receber o número da porta a se
+conectar.
+
+Para a implementação do serviço, este foi organizado em três partes principais,
+o cliente, o servidor e os módulos comuns, de modo a que as responsabilidades
+sejam separadas, o código possa ser reutilizado e o serviço seja escalável.
+
+Começando pela entidade central, o servidor é organizado nos seguintes módulos:
+
+- config `responsável pela manipulação do ficheiro de metadados`
+- handler `responsável pelo processamento dos pacotes dos clientes`
+- operations `componente com a lógica dos comandos`
+- logs `responsável pela manipulação do ficheiro de _logs_`
+
+Já o cliente é composto pelos seguintes módulos:
+
+- encryption `responsável pelos processos criptográficos`
+- handler `responsável pelo processamento de pacotes do servidor`
+- usage `componente auxiliar à consola`
+
+Estas entidades possuem, então, os seguintes módulos comuns:
+
+- packet `responsável pelo estruturamento dos pacotes usados na comunicação`
+- validation `componente com a lógica utilizada na validação de parâmetros`
+- keystore `responsável pela manipulação do ficheiro _.p12_`
+- exceptions `componente com a lógica intrínseca à emissão de mensagens de erro`
+- certutil `responsável pela manipulação de certificados`
+
 
 ## Comunicação entre Cliente e Servidor
 
