@@ -8,7 +8,13 @@ Este esquema de encriptação híbrido permite uma maior eficiência na encripta
 e desencriptação de ficheiros, uma vez que a encriptação simétrica é mais rápida
 que a encriptação assimétrica.
 
-**TODO** adicionar mais vantagens do esquema híbrido.
+Este modelo também facilita a partilha segura de ficheiros com múltiplos destinatários,
+pois a mesma chave simétrica pode ser encriptada várias vezes com diferentes chaves
+públicas, sem necessidade de re-encriptar o conteúdo do ficheiro.
+
+Além disso, este método melhora a escalabilidade e flexibilidade dos sistemas de
+segurança ao separar claramente os processos de encriptação de dados e gestão de
+chaves.
 
 ### Gestão de Chaves
 
@@ -138,19 +144,30 @@ Para ler um ficheiro, o cliente tem de:
 
 ### Requisitos de Segurança
 
-A integridade e confidencialidade dos conteúdos dos ficheiros é garantida
-através do uso da encriptação AES-GCM.
+A integridade, autenticidade e confidencialidade dos conteúdos dos ficheiros bem como
+das chaves simétricas guardadas nos metadados do servidor são garantidas através
+do uso da encriptação simétrica AES-GCM, e da encriptação assimétrica RSA, respetivamente.
 
-**TODO** explicar como o AES-GCM garante a integridade dos dados. (blocos)
+O AES é amplamente utilizado como um
+algoritmo de encriptação simétrica que fornece proteção contra vários tipos de
+ataques, incluindo ataques de força bruta e ataques de texto conhecido.
 
-Por outro lado, a integridade e confidencialidade das chaves simétricas guardadas
-nos metadados do servidor é garantida através do uso da encriptação assimétrica RSA.
+O GCM (Galois/Counter Mode) é um modo de operação que combina a encriptação
+com a autenticação, garantindo que os dados não foram alterados durante a
+transmissão, este modo utiliza um Message Authentication Code (MAC) para verificar
+a integridade dos dados.
 
-**TODO** a equipa de trabalho decidiu utilizar RSA com 2048 bits. (incluir source mistre)
+A equipa de trabalho decidiu utilizar o AES-GCM com 256 bits, para um alto nível
+de segurança dos conteúdos dos ficheiros dos clientes.
+
+A equipa de trabalho decidiu utilizar chaves RSA com 2048 bits, sendo que,
+atualmente, é considerada segura para a encriptação de dados e permite a
+encriptação e desencriptação mais rápida que chaves RSA com, por exemplo,
+4096 bits.
 
 ---
 
-**TODO** adicionar nota sobre a reencriptação de chaves e conteúdos em revogações,
+**TODO** adicionar nota sobre a re-encriptação de chaves e conteúdos em revogações,
 explicar o processo em diferentes casos, e o porquê de não o termos feito
 (ACL garante + eficiência de revogação). num ambiente de produção deve-se ponderar
-esta reencriptação.
+esta re-encriptação.
