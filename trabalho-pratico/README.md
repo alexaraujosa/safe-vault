@@ -85,8 +85,8 @@ armazenados no cofre, que deverá ser confiada pelos seus clientes. De tal forma
 um dos requisitos implícitos no serviço é a realização de todos os processos
 criptográficos, que envolvam um ficheiro, no lado do cliente, apenas existindo
 encriptação de ambos os lados nas trocas de mensagens no canal de comunicação,
-refletindo-se no envio de conteúdos encriptografados para o servidor, assim como
-as próprias chaves simétricas encriptografadas de maneira a que, o servidor, não
+refletindo-se no envio de conteúdos encriptados para o servidor, assim como
+as próprias chaves simétricas encriptados de maneira a que, o servidor, não
 consiga desencriptar o conteúdo com essas mesmas chaves.
 
 Tanto o cliente como o servidor recebem, opcionalmente, argumentos aquando da sua
@@ -107,24 +107,24 @@ sejam separadas, o código possa ser reutilizado e o serviço seja escalável.
 
 Começando pela entidade central, o servidor é organizado nos seguintes módulos:
 
-- config `responsável pela manipulação do ficheiro de metadados`
-- handler `responsável pelo processamento dos pacotes dos clientes`
-- operations `componente com a lógica dos comandos`
-- logs `responsável pela manipulação do ficheiro de _logs_`
+- `config` responsável pela manipulação do ficheiro de metadados;
+- `handler` responsável pelo processamento dos pacotes dos clientes;
+- `operations` componente com a lógica dos comandos;
+- `logs` responsável pela manipulação do ficheiro de *logs*.
 
 Já o cliente é composto pelos seguintes módulos:
 
-- encryption `responsável pelos processos criptográficos`
-- handler `responsável pelo processamento de pacotes do servidor`
-- usage `componente auxiliar à consola`
+- `encryption` responsável pelos processos criptográficos;
+- `handler` responsável pelo processamento de pacotes do servidor;
+- `usage` componente auxiliar à consola.
 
 Estas entidades possuem, então, os seguintes módulos comuns:
 
-- packet `responsável pelo estruturamento dos pacotes usados na comunicação`
-- validation `componente com a lógica utilizada na validação de parâmetros`
-- keystore `responsável pela manipulação do ficheiro _.p12_`
-- exceptions `componente com a lógica intrínseca à emissão de mensagens de erro`
-- certutil `responsável pela manipulação de certificados`
+- `packet` responsável pelo estruturamento dos pacotes usados na comunicação;
+- `validation` componente com a lógica utilizada na validação de parâmetros;
+- `keystore` responsável pela manipulação do ficheiro *.p12*;
+- `exceptions` componente com a lógica intrínseca à emissão de mensagens de erro;
+- `certutil` responsável pela manipulação de certificados.
 
 
 ## Comunicação entre Cliente e Servidor
