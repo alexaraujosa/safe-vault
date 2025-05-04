@@ -5,13 +5,13 @@ import os
 
 
 def is_valid_name(name: str) -> bool:
-    "Check if the given name is valid, i.e., not empty and alphanumeric."
-    return isinstance(name, str) and len(name) > 0 and name.isalnum()
+    "Check if the given name is valid, i.e., not empty, alphanumeric and less than or equal to 256 characters."
+    return isinstance(name, str) and len(name) > 0 and name.isalnum() and len(name) <= 256
 
 
 def is_valid_file_name(file_name: str) -> bool:
-    "Check if the given file name is valid, i.e., not empty."
-    return isinstance(file_name, str) and len(file_name) > 0
+    "Check if the given file name is valid, i.e., not empty and less than or equal to 256 characters."
+    return isinstance(file_name, str) and len(file_name) > 0 and len(file_name) <= 256
 
 
 def is_valid_file(file_path: str) -> bool:
@@ -44,10 +44,11 @@ def is_valid_permissions(permissions: str) -> bool:
 
 def is_valid_key(key: str) -> bool:
     """
-    Check if the given key is valid, i.e., not empty.
-    TODO In the future validate key characters and size.
+    Check if the given key is valid, i.e., not empty and less than or equal to 2048 characters.
+    INFO RSA 2048 public key is 512 characters long, with base64 encoding it is 605 characters long.
+    INFO AES 256 key is 32 bytes long, with RSA encryption and base64 encoding it is 345 characters long.
     """
-    return isinstance(key, str) and len(key) > 0
+    return isinstance(key, str) and len(key) > 0 and len(key) <= 2048
 
 
 def is_valid_size(size: int) -> bool:
