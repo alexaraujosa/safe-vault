@@ -41,7 +41,32 @@
 
 ## Introdução
 
-TODO
+O presente relatório descreve o desenvolvimento de um serviço de Cofre Seguro,
+concebido para permitir aos utilizadores de uma organização armazenar e partilhar
+ficheiros de texto com garantias de **autenticidade**, **integridade** e **confidencialidade**.
+O sistema foi implementado em Python, adotando uma arquitetura cliente-servidor,
+na qual o servidor centraliza o estado da aplicação e os clientes interagem com
+o serviço através de uma interface textual baseada em comandos.
+
+A solução proposta garante a gestão segura de ficheiros pessoais e partilhados,
+possibilitando igualmente a criação e administração de grupos, com controlo rigoroso
+das permissões atribuídas aos diferentes utilizadores. A comunicação entre os clientes
+e o servidor é assegurada pelo protocolo **TLSv1.3**, de modo a garantir a autenticidade,
+confidencialidade e integridade dos dados em trânsito. Adicionalmente, os ficheiros
+são protegidos através de um esquema de encriptação híbrido, que recorre a algoritmos
+simétricos (AES-GCM) para o conteúdo e a algoritmos assimétricos (RSA) para a troca
+segura de chaves.
+
+Este documento encontra-se estruturado em capítulos que abordam a arquitetura da
+aplicação, os mecanismos de segurança aplicados, a estrutura dos metadados, a
+execução dos comandos suportados e sugestões para possíveis extensões futuras.
+A implementação cumpre os requisitos especificados no enunciado, incluindo ainda
+funcionalidades extra, como um sistema de registo de eventos (*logging*) e a introdução
+de moderadores nos grupos, permitindo uma gestão mais flexível e controlada dos acessos.
+
+O relatório visa, assim, apresentar uma visão técnica fundamentada sobre as decisões
+tomadas, destacando os aspetos críticos à robustez, segurança e escalabilidade
+do serviço.
 
 ## Arquitetura do Serviço
 
