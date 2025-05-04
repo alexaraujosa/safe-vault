@@ -651,23 +651,36 @@ Para alem da alteração referida, a equipa também modificou o comportamento do
 os clientes não conseguiam ter uma perceção clara de que ficheiros têm acesso como partilha, já que estes
 precisariam do identificador do utilizador que os partilhou para conseguir listar os ficheiros. Desta forma,
 a listagem dos ficheiros do cofre seguro pessoal passou a ser efetuada com a invocação do comando `list` com
-a _flag_ `-o`. Por outro lado, a execução desse comando sem nenhum _flag_ leva à listagem de todos os ficheiros
+a _flag_ `-o`. Por outro lado, a execução desse comando sem nenhuma _flag_ leva à listagem de todos os ficheiros
 ao qual o utilizador tem acesso.
 
-Relativamente às permissões dos membros dos grupos, FALAR DO CHANGE-PERMISSIONS e que os moderadores os podem invocar para alem do dono do grupo, como dito anteriormente
+Relativamente às permissões dos membros dos grupos, a adição do comando `group change-permissions` reflete numa
+maior vertente administrativa no serviço, permitindo a um moderador e dono, tal como descrito anteriormente,
+modificar as permissões de um membro. Para além disso, este comando permite a alteração dessas permissões sem
+ser necessário remover um utilizador e adicioná-lo novamente para modificar as suas permissões, já que, anteriormente,
+apenas se poderia atribuir permissões a um utilizador ao adicioná-lo a um grupo.
 
-TODO agrupar os comandos por categoria e listá-los
-TODO falar sobre os comandos adicionais implementados, bem como a nova opcao do list e o delete group file,
-que o dono do grupo apaga o ficheiro apenas no grupo, nao tendo poder para apagar o ficheiro no vault do user,
-e o dono do ficheiro pode apagar o ficheiro apenas no grupo, ou entao depois apagar do seu vault tambem.
+Para encerrar a categoria dos grupos, a equipa de trabalho adicionou, como dito anteriormente, uma nova entidade
+ao serviço, refletindo-se na adição dos comandos `group add-moderator` e `group remove-moderator`. Estes comandos
+apenas poderão ser executados por uma entidade superior, isto é, um dono de um grupo, passando um utilizador a ser
+membro do grupo com permissões de escrita e, ao mesmo tempo, moderador.
 
-- Referir os comandos implementados
-- Validação em ambos os lados (evitar sobrecarga no server + pacotes com valores alterados a meio do envio, exemplificando)
-- Referir que a validação é suportada pela nossa criação da gestão de utilizadores/grupos/ficheiros (moderadores)
-- Referir ataques bloqueados com validações de parâmetros (ex.: privilege escalation nos grupos)
-- Referir prevenção de file enumeration (ex.: tentar ler o conteúdo de um vault diz que ou é erro de permissão ou não existe, em vez de dizer se existe ou não)
-- Imagens com pacotes capturados pelo sniffer, mostrando o conteudo encriptado e desencriptado
-TODO
+Como forma de manter a segurança sobretudo do serviço, a equipa de trabalho optou por fazer a validação dos parâmetros
+passados ao invocar um comando em ambos os lados, isto é, no cliente e no servidor. Desta forma, a equipa evita que o 
+servidor fique sobrecarregado com pedidos mal formados, já que a validação no cliente impede o envio de pacotes para o
+servidor nesses casos, bem como a possibilidade de tornar o servidor instável a nível dos dados guardados e operacional
+para outros clientes. Este processo de validação passa por duas fases, uma primeira efetuada tanto no cliente como no
+servidor, que remete para a validação sintática e semântica dos parâmetros enviados, enquanto que a segunda fase, apenas
+realizada no servidor, suportada pelo ficheiro de metadados criado pela equipa, valida as permissões do utilizador que
+invocou o comando. Estas fases são, de facto, cruciais para a integridade e exposição do serviço, já que a maior parte dos
+ataques são bloqueados nelas. Tendo como exemplo um utilizador que tenta escalar os seus privilégios num grupo, este
+não o irá concretizar, já que todos os comandos que envolvem alterações de permissões, adição de membros e moderadores são
+validados. De igual forma, ataques de enumeração de ficheiros foram tidos em consideração aquando da implementação dos
+comandos sobre ficheiros, tendo a equipa de trabalho deixado como exemplificação o comando `read` que, no caso de falha
+tanto pela inexistência de um arquivo como falta de permissões para ler o arquivo de um utilizador, retorna uma mensagem
+de erro genérica, impossibilitando o atacante de perceber se o ficheiro realmente existe ou não. Para além destes ataques,
+o ataque de passagem de diretório também é impossibilitado, por exemplo, no comando `read`, já que o identificador de um
+utilizador é sempre colocado no início de um _path_.
 
 ## Sistema de *Logging*
 
