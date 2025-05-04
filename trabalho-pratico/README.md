@@ -29,11 +29,16 @@
   - [Leitura de Ficheiros](#leitura-de-ficheiros)
   - [Requisitos de Segurança](#requisitos-de-segurança)
 - [Gestão de Utilizadores, Grupos e Ficheiros: Metadata](#gestão-de-utilizadores-grupos-e-ficheiros-metadata)
-    - [Objetivo](#objetivo)
-    - [Vantagens](#vantagens)
-    - [Estrutura](#estrutura)
-    - [Notas](#notas)
+  - [Objetivo](#objetivo)
+  - [Vantagens](#vantagens)
+  - [Estrutura](#estrutura)
+  - [Notas](#notas)
 - [Execução de Comandos](#execução-de-comandos)
+  - [Comandos sobre Ficheiros](#comandos-sobre-ficheiros)
+  - [Comandos sobre Grupos](#comandos-sobre-grupos)
+  - [Comandos sobre Utilizadores](#comandos-sobre-utilizadores)
+  - [Comandos de *Logs*](#comandos-sobre-logs)
+  - [Comandos Gerais](#comandos-gerais)
 - [Sistema de *Logging*](#sistema-de-logging)
 - [Trabalho Futuro](#trabalho-futuro)
 - [Possíveis Valorizações](#possíveis-valorizações)
@@ -584,20 +589,21 @@ dos requisitos inicialmente providenciados.
 ## Execução de Comandos
 
 A aplicação do cliente implementa uma diversidade de comandos que permitem aos utilizadores interagirem
-com o serviço de cofre seguro. Estes comandos em conjunto com o sistema de gestão criado levam à 
-cobertura de todas as funcionalidades descritas no enunciado, nomeadamente, a manipulação de ficheiros e 
-a gestão de utilizadores e grupos. Para além desta base, a equipa de trabalho acrescentou comandos que permitem uma 
+com o serviço de cofre seguro. Estes comandos em conjunto com o sistema de gestão criado levam à
+cobertura de todas as funcionalidades descritas no enunciado, nomeadamente, a manipulação de ficheiros e
+a gestão de utilizadores e grupos. Para além desta base, a equipa de trabalho acrescentou comandos que permitem uma
 maior composição a nível dos grupos através da criação de uma nova entidade, os moderadores, que possuem, para
 além da permissão de escrita em ficheiros do grupo, a possibilidade de adicionarem e removerem novos membros
 aos grupos, bem como modificar as permissões de um membro, refletindo um maior poder administrativo nesta
-componente do serviço, mesmo quando o dono do grupo não está disponível. Por outro lado, o desenvolvimento 
-de um sistema de _log_ persistente, tal como será detalhado posteriormente, levou à necessidade de serem criados 
-mais comandos, possibilitando a consulta dessas mesmas _logs_, de forma global ou seletiva por parte dos clientes.  
+componente do serviço, mesmo quando o dono do grupo não está disponível. Por outro lado, o desenvolvimento
+de um sistema de _log_ persistente, tal como será detalhado posteriormente, levou à necessidade de serem criados
+mais comandos, possibilitando a consulta dessas mesmas _logs_, de forma global ou seletiva por parte dos clientes.
 
 ---
-De forma a organizar e clarificar os comandos, estes foram agrupados por categorias conforme apresentado de seguida:  
 
-### Comandos sobre ficheiros
+De forma a organizar e clarificar os comandos, estes foram agrupados por categorias conforme apresentado de seguida:
+
+### Comandos sobre Ficheiros
 
 - `add <file-path>`
 - `delete <file-id>`
@@ -606,12 +612,12 @@ De forma a organizar e clarificar os comandos, estes foram agrupados por categor
 - `read <file-id>`
 - `list [-o | -u <user-id> | -g <group-id>]`
 
-### Comandos sobre utilizadores
+### Comandos sobre Utilizadores
 
 - `share <file-id> <user-id> <permissions>`
 - `revoke <file-id> <user-id>`
 
-### Comandos sobre grupos
+### Comandos sobre Grupos
 
 - `group create <group-name>`
 - `group delete <group-id>`
@@ -624,13 +630,13 @@ De forma a organizar e clarificar os comandos, estes foram agrupados por categor
 - `group add-moderator <group-id> <user-id>`
 - `group remove-moderator <group-id> <user-id>`
 
-### Comandos sobre _logs_
+### Comandos sobre *Logs*
 
 - `logs global [-g group_id]`
 - `logs file <file-id>`
 - `logs group <group-id>`
 
-### Comandos gerais
+### Comandos Gerais
 
 - `whoami`
 - `help`
@@ -645,10 +651,10 @@ a gestão dos ficheiros, já que o dono do ficheiro poderia ter partilhado esse 
 externo ao grupo, levando a que uma entidade externa a essa partilha tenha controlo sobre a mesma. Dessa forma,
 a equipa adicionou o comando `group delete-file`, que permite apagar o ficheiro do cofre do grupo, permanecendo
 no cofre do dono do ficheiro, evitando essa dependência de controlo. Eventualmente, caso o dono do ficheiro o
-queira remover totalmente do sistema, invocaria o comando `delete`.  
+queira remover totalmente do sistema, invocaria o comando `delete`.
 
 Para alem da alteração referida, a equipa também modificou o comportamento do comando `list`, uma vez que
-os clientes não conseguiam ter uma perceção clara de que ficheiros têm acesso como partilha, já que estes
+os clientes não conseguiam ter uma percepção clara de que ficheiros têm acesso como partilha, já que estes
 precisariam do identificador do utilizador que os partilhou para conseguir listar os ficheiros. Desta forma,
 a listagem dos ficheiros do cofre seguro pessoal passou a ser efetuada com a invocação do comando `list` com
 a _flag_ `-o`. Por outro lado, a execução desse comando sem nenhuma _flag_ leva à listagem de todos os ficheiros
@@ -666,7 +672,7 @@ apenas poderão ser executados por uma entidade superior, isto é, um dono de um
 membro do grupo com permissões de escrita e, ao mesmo tempo, moderador.
 
 Como forma de manter a segurança sobretudo do serviço, a equipa de trabalho optou por fazer a validação dos parâmetros
-passados ao invocar um comando em ambos os lados, isto é, no cliente e no servidor. Desta forma, a equipa evita que o 
+passados ao invocar um comando em ambos os lados, isto é, no cliente e no servidor. Desta forma, a equipa evita que o
 servidor fique sobrecarregado com pedidos mal formados, já que a validação no cliente impede o envio de pacotes para o
 servidor nesses casos, bem como a possibilidade de tornar o servidor instável a nível dos dados guardados e operacional
 para outros clientes. Este processo de validação passa por duas fases, uma primeira efetuada tanto no cliente como no
@@ -679,12 +685,12 @@ validados. De igual forma, ataques de enumeração de ficheiros foram tidos em c
 comandos sobre ficheiros, tendo a equipa de trabalho deixado como exemplificação o comando `read` que, no caso de falha
 tanto pela inexistência de um arquivo como falta de permissões para ler o arquivo de um utilizador, retorna uma mensagem
 de erro genérica, impossibilitando o atacante de perceber se o ficheiro realmente existe ou não. Para além destes ataques,
-o ataque de passagem de diretório também é impossibilitado, por exemplo, no comando `read`, já que o identificador de um
+o ataque de passagem de diretoria também é impossibilitado, por exemplo, no comando `read`, já que o identificador de um
 utilizador é sempre colocado no início de um _path_.
 
 ## Sistema de *Logging*
 
-Com o objetivo de proporcionar uma melhor perceção dos comandos executados aos 
+Com o objetivo de proporcionar uma melhor percepção dos comandos executados aos
 clientes, a equipa de trabalho implementou no serviço um sistema de registos
 persistente. Numa primeira fase de planeamento, foi ponderada a criação de um
 formato de ficheiro próprio, de forma a manter a reduzir a utilização de memória.
@@ -693,7 +699,7 @@ com um formato similar ao ficheiro de _metadata_. Apesar do formato utilizado n�
 ser o mais propício guardar os registos, uma vez que para obter as _logs_ de um
 cliente será necessário carregar o ficheiro todo, já que o JSON não permite o
 carregamento parcial, permitiu à equipa de trabalho implementar uma variedade de
-filtros ao listar os registos dos comandos executados ao longo de todas as sessões. 
+filtros ao listar os registos dos comandos executados ao longo de todas as sessões.
 Assim sendo, um cliente consegue visualizar todos os comandos que invocou, bem como
 os comandos que executou referentes a um determinado ficheiro ou grupo. Por outro
 lado, a equipa decidiu, mais uma vez, proporcionar uma maior vertente administrativa
@@ -716,16 +722,13 @@ um novo registo é adicionado sempre que a operação correspondente ao comando 
 sido executada, ou seja, no final do processamento de um pacote enviado pelo cliente.
 Por fim, certos comandos, como o _share_ e _revoke_, que envolvem múltiplos utilizadores,
 requerem um tratamento especial. Nestes casos, o mesmo registo é adicionados aos
-clientes envolvidos, garantindo a consistência entre os registos visualizados por 
+clientes envolvidos, garantindo a consistência entre os registos visualizados por
 cada cliente e o estado real do cofre seguro. Isto evita, por exemplo, situações
 em que a substituição do conteúdo de um ficheiro não seja refletida nas _logs_ de
 um utilizador com acesso ao mesmo, levando-o a pensar, incorretamente, que o ficheiro
 não foi alterado.
 
 ## Trabalho Futuro
-
-TODO
-- Próprio formato do sistema de logs, em vez de guardar em ficheiros json
 
 A equipa de trabalho teve em consideração o uso de encriptação com curvas elípticas,
 uma vez que estas oferecem um nível de segurança superior a RSA para o mesmo tamanho
