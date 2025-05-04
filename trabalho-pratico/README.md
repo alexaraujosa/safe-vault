@@ -4,6 +4,8 @@
 
 - [Introdução](#introdução)
 - [Arquitetura do Serviço](#arquitetura-do-serviço)
+  - [Usagem do `server`](#usagem-do-server)
+  - [Usagem do `client`](#usagem-do-client)
 - [Comunicação entre Cliente e Servidor](#comunicação-entre-cliente-e-servidor)
   - [*TLS Handshake*](#tls-handshake)
   - [Tratamento de Conexões](#tratamento-de-conexões)
@@ -100,6 +102,43 @@ o seu estado, o caminho para armazenar em ficheiros binários o conteúdo dos
 ficheiros enviados pelos clientes e, por fim, o número da porta a ser utilizado
 no _socket_ TCP. Por outro lado, o cliente pode receber o número da porta a se
 conectar.
+
+### Usagem do `server`
+
+```
+$ python3 -m server.main --help
+usage: server [-h] [--cert CERT] [--keystore KEYSTORE] [--port PORT]
+              [--config CONFIG] [--vault VAULT] [--logs LOGS]
+              [--debug | --no-debug | -d]
+
+options:
+  -h, --help            show this help message and exit
+  --cert CERT           set server CA certificate file
+  --keystore KEYSTORE   set server keystore file
+  --port PORT, -p PORT  set port number to listen on
+  --config CONFIG       set config file path
+  --vault VAULT         set vault file path
+  --logs LOGS           set logs file path
+  --debug, --no-debug, -d
+                        enable debug mode
+```
+
+### Usagem do `client`
+
+```
+$ python3 -m client.main --help
+usage: client [-h] --keystore KEYSTORE [--cert CERT] [--host HOST]
+              [--port PORT]
+
+options:
+  -h, --help            show this help message and exit
+  --keystore KEYSTORE   client's keystore file
+  --cert CERT           set server's CA certificate file
+  --host HOST           set server hostname or IP address
+  --port PORT, -p PORT  set server port number
+```
+
+---
 
 Para a implementação do serviço, este foi organizado em três partes principais,
 o cliente, o servidor e os módulos comuns, de modo a que as responsabilidades
