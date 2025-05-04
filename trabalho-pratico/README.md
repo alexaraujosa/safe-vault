@@ -1,5 +1,38 @@
 # Relatório - Serviço de Cofre Seguro
 
+## Índice
+
+- [Introdução](#introdução)
+- [Arquitetura do Serviço](#arquitetura-do-serviço)
+- [Comunicação entre Cliente e Servidor](#comunicação-entre-cliente-e-servidor)
+- [Autenticação de Clientes e Servidor](#autenticação-de-clientes-e-servidor)
+- [Encriptação de Ficheiros](#encriptação-de-ficheiros)
+  - [Gestão de Chaves](#gestão-de-chaves)
+    - [Client-side](#client-side)
+    - [Server-side](#server-side)
+  - [Esquema de Encriptação de Ficheiros](#esquema-de-encriptação-de-ficheiros)
+    - [Ficheiros Pessoais](#ficheiros-pessoais)
+      - [Adicionar Ficheiro ao Cofre Pessoal](#adicionar-ficheiro-ao-cofre-pessoal)
+    - [Partilha de Ficheiros](#partilha-de-ficheiros)
+      - [Partilhar Ficheiro](#partilhar-ficheiro)
+    - [Ficheiros de Grupos](#ficheiros-de-grupos)
+      - [Criar Grupo](#criar-grupo)
+      - [Adicionar Membro ao Grupo](#adicionar-membro-ao-grupo)
+      - [Criar Ficheiro no Grupo](#criar-ficheiro-no-grupo)
+    - [Modelo de Encriptação para Ficheiros de Grupos](#modelo-de-encriptação-para-ficheiros-de-grupos)
+  - [Leitura de Ficheiros](#leitura-de-ficheiros)
+  - [Requisitos de Segurança](#requisitos-de-segurança)
+- [Gestão de Utilizadores, Grupos e Ficheiros: Metadata](#gestão-de-utilizadores-grupos-e-ficheiros-metadata)
+    - [Objetivo](#objetivo)
+    - [Vantagens](#vantagens)
+    - [Estrutura](#estrutura)
+    - [Notas](#notas)
+- [Execução de Comandos](#execução-de-comandos)
+- [Sistema de Logging](#sistema-de-logging)
+- [Trabalho Futuro](#trabalho-futuro)
+- [Possíveis Valorizações](#possíveis-valorizações)
+- [Conclusão](#conclusão)
+
 ## Introdução
 
 TODO
