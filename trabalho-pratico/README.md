@@ -39,6 +39,7 @@
   - [Comandos sobre Utilizadores](#comandos-sobre-utilizadores)
   - [Comandos de *Logs*](#comandos-sobre-logs)
   - [Comandos Gerais](#comandos-gerais)
+  - [Considerações sobre Re-encriptação de Ficheiros](#considerações-sobre-re-encriptação-de-ficheiros)
 - [Sistema de *Logging*](#sistema-de-logging)
 - [Trabalho Futuro](#trabalho-futuro)
 - [Possíveis Valorizações](#possíveis-valorizações)
@@ -429,13 +430,6 @@ atualmente, é considerada segura para a encriptação de dados e permite a
 encriptação e desencriptação mais rápida que chaves RSA com, por exemplo,
 4096 bits.
 
----
-
-**TODO** adicionar nota sobre a re-encriptação de chaves e conteúdos em revogações,
-explicar o processo em diferentes casos, e o porquê de não o termos feito
-(ACL garante + eficiência de revogação). num ambiente de produção deve-se ponderar
-esta re-encriptação.
-
 ## Gestão de Utilizadores, Grupos e Ficheiros: Metadata
 
 ### Objetivo
@@ -687,6 +681,49 @@ tanto pela inexistência de um arquivo como falta de permissões para ler o arqu
 de erro genérica, impossibilitando o atacante de perceber se o ficheiro realmente existe ou não. Para além destes ataques,
 o ataque de passagem de diretoria também é impossibilitado, por exemplo, no comando `read`, já que o identificador de um
 utilizador é sempre colocado no início de um _path_.
+
+### Considerações sobre Re-encriptação de Ficheiros
+
+Em certos comandos como `revoke` e `group delete-user`, a equipa optou por não
+proceder à re-encriptação dos ficheiros afetados. Esta escolha teve como objetivo
+principal a **eficiência na execução** dessas operações, evitando o custo computacional
+associado à re-encriptação de múltiplos ficheiros. Re-encriptar todos os conteúdos
+a que um utilizador revogado teve acesso pode ser um processo exigente para o cliente,
+especialmente em sistemas com grande volume de dados partilhados.
+
+Por exemplo, se um utilizador for removido de um grupo após a criação de um ficheiro,
+este utilizador deixará de ter acesso ao ficheiro graças ao mecanismo de controlo de
+acessos (ACL). No entanto, se já tiver obtido previamente a chave mestra do grupo,
+**continuará tecnicamente capaz de desencriptar ficheiros** caso tenha acesso ao seu
+conteúdo encriptado. A segurança, neste caso, depende da fiabilidade da ACL em
+impedir o acesso ao conteúdo.
+
+Em sistemas com **requisitos de segurança mais rigorosos** ou em ambientes de produção
+onde a confidencialidade seja crítica, recomenda-se a **re-encriptação dos conteúdos
+afetados** como medida de mitigação. Isto assegura que utilizadores revogados, mesmo
+na posse de chaves antigas, não possam aceder a novos conteúdos protegidos que podem
+ser expostos.
+
+Para mitigar o risco de acesso não autorizado após revogações, apresenta-se de
+seguida um processo genérico de re-encriptação de um ficheiro:
+
+1. O cliente desencripta a **chave simétrica antiga** do ficheiro utilizando a sua chave privada.
+2. Com essa chave, desencripta o **conteúdo original** do ficheiro.
+3. Gera uma **nova chave simétrica** (AES_GCM) para proteger o ficheiro.
+4. Encripta a nova chave simétrica com:
+    - a sua própria **chave pública**;
+    - a **chave pública de todos os utilizadores** que têm acesso ao ficheiro,
+        via partilha direta.
+5. Se o ficheiro pertencer a um **grupo**, este processo é repetido com uma nova
+    chave simétrica partilhada entre os membros do grupo. Adicionalmente, todos
+    os ficheiros associados ao grupo devem ser re-encriptados, uma vez que
+    partilham a mesma chave de grupo.
+
+Esta estratégia assegura que, mesmo que um utilizador revogado conserve cópias de
+chaves antigas, **não poderá aceder aos conteúdos atualizados**, mesmo estes sendo
+expostos, reforçando assim a segurança global do sistema. Contudo, tal abordagem
+deve ser ponderada tendo em conta os **custos operacionais** e o **modelo de ameaça
+específico** do sistema em questão.
 
 ## Sistema de *Logging*
 
