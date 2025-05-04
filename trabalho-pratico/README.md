@@ -629,7 +629,7 @@ encriptação usada pelo cliente, mais especificamente a classe responsável pel
 encriptação assimétrica implementada e a atualização do modulo responsável pela
 criação de certificados e *keystores*, com a nova geração de chaves.
 
-No âmbito adicional aos conteúdos programáticos da Unidade Curricular de Segurança
+No âmbito adicional aos conteúdos programáticos da unidade curricular de Segurança
 de Sistemas de Informação, a equipa de trabalho poderá desenvolver um servidor com
 concorrência, permitindo que vários clientes interajam com o serviço de cofre seguro
 em simultâneo. Para tal implementação, a equipa de trabalho poderá utilizar uma *thread*
@@ -686,4 +686,22 @@ do sistema, das quais se destacam:
 
 ## Conclusão
 
-TODO
+O desenvolvimento do serviço de Cofre Seguro cumpriu os objetivos propostos,
+oferecendo uma solução robusta e segura para armazenamento e partilha de ficheiros.
+Através da implementação de mecanismos avançados de segurança, como
+**encriptação híbrida (AES-GCM e RSA)**, **autenticação baseada em certificados X.509**
+e **comunicação protegida por TLS**, garantiu-se a **confidencialidade**, **integridade**
+e **autenticidade** dos dados, tanto em trânsito como em repouso.
+
+A arquitetura cliente-servidor, aliada a um sistema de metadados bem estruturado,
+permitiu uma gestão eficiente de utilizadores, grupos e ficheiros, com controlo
+granular de permissões. A introdução de funcionalidades adicionais ampliou as
+capacidades do sistema, tornando-o mais flexível e auditável.
+
+Apesar das limitações inerentes ao tempo e escopo do projeto, a solução desenvolvida
+demonstrou ser escalável, podendo ser expandida com melhorias futuras.
+
+Em síntese, este projeto não só cumpriu os requisitos técnicos e de segurança definidos,
+como também serviu como uma aplicação prática dos conceitos teóricos abordados na
+unidade curricular, reforçando a importância de uma abordagem rigorosa no
+desenvolvimento de sistemas seguros.
