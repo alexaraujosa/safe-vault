@@ -99,10 +99,12 @@ se destacam:
 
 1. **Identificadores Únicos**:
     - `user_id`: Nome de utilizador, único e imutável, obtido através do campo
-        `PSEUDONYM` do certificado X.509;
+        `PSEUDONYM` do certificado X.509 (entre 1 a 256 caracteres alfanuméricos);
     - `file_id`: Segue o formato `user_id:filename`, onde `user_id` é o ID do dono
-        do ficheiro e `filename` o nome (*basename*) do ficheiro;
+        do ficheiro e `filename` o nome (*basename*) do ficheiro
+        (nome do ficheiro entre 1 a 256 caracteres);
     - `group_id`: Nome do grupo, único e imutável, definido pelo dono na sua criação.
+        (entre 1 a 256 caracteres alfanuméricos).
 
 2. **Segurança**:
     - Todas as chaves simétricas (AES) são armazenadas encriptadas com a chave
