@@ -93,10 +93,10 @@ Tanto o cliente como o servidor recebem, opcionalmente, argumentos aquando da su
 execução, definindo o seu comportamento. Ambas as soluções necessitam de receber
 o certificado referente à entidade de certificação que gerou os certificados a
 serem utilizados, de maneira a que seja possível os validar, bem como o caminho
-para o seu próprio ficheiro _.p12_ que corresponde à _keystore_ que contem o
+para o seu próprio ficheiro _.p12_ que corresponde à _keystore_ que contém o
 certificado a ser utilizado e a chave privada. De maneira mais restrita, o servidor
 pode receber os caminhos para os ficheiros de metadados e registos, restaurando
-o seu estado, o caminho para armazenar em ficheiros binários o conteúdo dos 
+o seu estado, o caminho para armazenar em ficheiros binários o conteúdo dos
 ficheiros enviados pelos clientes e, por fim, o número da porta a ser utilizado
 no _socket_ TCP. Por outro lado, o cliente pode receber o número da porta a se
 conectar.
