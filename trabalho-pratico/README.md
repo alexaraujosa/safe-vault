@@ -78,7 +78,7 @@ do serviço.
 
 O serviço de cofre seguro é composto por uma instância central, o servidor, que 
 atende os pedidos enviados pelos clientes, refletindo-se numa arquitetura
-servidor-cliente. Dada a necessidade do servidor não poder, em qualquer instante,
+cliente-servidor. Dada a necessidade do servidor não poder, em qualquer instante,
 aceder ao conteúdo original de um ficheiro, este segue um comportamento semelhante
 a um servidor _zero-trust_, deferindo, apenas, na vertente de acesso aos ficheiros
 armazenados no cofre, que deverá ser confiada pelos seus clientes. De tal forma,
