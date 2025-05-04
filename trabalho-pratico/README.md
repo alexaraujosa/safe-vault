@@ -414,11 +414,37 @@ repetido ao disco, melhorando assim o desempenho do servidor.
 
 ## Possíveis valorizações
 
-- Lista com todas as valorizações que foram implementadas e detalhadas no relatório
-- Atomic writes
-- Path traversal
-- Validação de parâmetros tanto no cliente (para evitar sobrecarga no *server*) como no *server*
-- OOM protection (*validate max size*) (zero-trust)
+A equipa de trabalho tomou as devidas precauções para garantir uma segurança acrescida
+do sistema, das quais se destacam:
+
+- **Validação de certificados**: O servidor valida os certificados dos clientes
+    e vice-versa, garantindo que apenas clientes autorizados podem aceder ao serviço,
+    bem como são verificadas as assinaturas digitais dos certificados, e respetivas
+    datas de validade.
+- **Validação de parâmetros**: Todos os parâmetros trocados entre o cliente e o servidor
+    são validados, tanto no cliente com o intuito de evitar sobrecarga desnecessária
+    no servidor, como no servidor para evitar os seguintes ataques:
+    - ***Path traversal***: O servidor valida os caminhos dos ficheiros, evitando
+        que um cliente aceda a ficheiros fora do seu cofre seguro, bloqueando
+        quaisquer tentativas de leitura ou escrita em diretorias para além do
+        cofre seguro;
+    - **Proteção contra OOM e DoS**: O servidor valida o tamanho de todos os dados recebidos,
+        visando combater ataques de *Out of Memory*, que poderiam comprometer dados
+        confidenciais do servidor, ou ataques de *Denial of Service* que, em um caso
+        de envio de dados excessivos e/ou constantes, poderiam levar à
+        sobrecarga do servidor, tornando-o incapaz de atender a outros pedidos, pela
+        falta de capacidade de processamento e/ou memória em relação aos metadados;
+    - ***Reverse shells***: O servidor em nenhum momento executa comandos nativamente
+        no sistema operativo, evitando assim que um cliente possa executar comandos
+        maliciosos no servidor, como por exemplo, abrir uma *shell* reversa que
+        sobrepasse possíveis regras de *firewall* definidas ou executar comandos
+        de leitura/escrita de ficheiros sensíveis do sistema;
+- ***Atomic writes***: O servidor ao escrever conteúdos no disco, utiliza
+    operações atómicas, garantindo que os dados não são corrompidos em caso de falha
+    durante a escrita. Para tal, o servidor utiliza um ficheiro temporário para
+    escrever os dados e só depois renomeia o ficheiro temporário para o nome final,
+    deste modo o servidor garante que mesmo em situações de falha, conteúdos em
+    disco, bem como os metadados, não são corrompidos.
 
 ## Conclusão
 
